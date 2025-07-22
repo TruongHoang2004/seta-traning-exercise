@@ -27,9 +27,18 @@ func SetupRoutes(router *gin.Engine) {
 		}
 	}
 
-	// GraphQL handler
-	router.POST("/graphql", gin.WrapH(handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))))
+	// GraphQL handler với middleware JWT
+	router.POST("/graphql", middleware.OptionalAuthMiddleware(), func(c *gin.Context) {
+		srv := handler.NewDefaultServer(
+			generated.NewExecutableSchema(
+				generated.Config{
+					Resolvers: &graph.Resolver{},
+				},
+			),
+		)
+		srv.ServeHTTP(c.Writer, c.Request)
+	})
 
-	// Optional: Playground UI
+	// Playground UI
 	router.GET("/playground", gin.WrapH(playground.Handler("GraphQL playground", "/graphql")))
 }

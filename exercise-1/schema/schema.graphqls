@@ -86,5 +86,5 @@ type Mutation {
     email: String!
   ): UserMutationResponse!
   login(input: UserInput!): AuthMutationResponse!
-  renewToken(userId: ID!): AuthMutationResponse!
+  renewToken(refreshToken: String!): AuthMutationResponse!
 }

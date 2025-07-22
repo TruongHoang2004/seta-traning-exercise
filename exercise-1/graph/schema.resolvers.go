@@ -59,37 +59,196 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, userID string, userna
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*model.AuthMutationResponse, error) {
-	panic(fmt.Errorf("not implemented: Login - login"))
+	email := input.Email
+	password := input.Password
+
+	var user models.User
+	if err := database.DB.Where("email = ?", email).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	if err := utils.CheckPasswordHash(password, user.PasswordHash); err != nil {
+		return nil, fmt.Errorf("invalid password")
+	}
+
+	// Generate JWT accessToken
+	accessToken, err := utils.GenerateJWTAccessToken(user.ID, string(user.Role))
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate JWT refreshToken
+	refreshToken, err := utils.GenerateJWTRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.AuthMutationResponse{
+		AccessToken:  &accessToken,
+		RefreshToken: &refreshToken,
+		User: &model.User{
+			UserID:   user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     model.UserType(user.Role),
+		},
+		Code:    "200",
+		Success: true,
+		Message: fmt.Sprintf("Good to see you, %s", user.Username),
+	}, nil
 }
 
 // RenewToken is the resolver for the renewToken field.
-func (r *mutationResolver) RenewToken(ctx context.Context, userID string) (*model.AuthMutationResponse, error) {
-	panic(fmt.Errorf("not implemented: RenewToken - renewToken"))
+func (r *mutationResolver) RenewToken(ctx context.Context, refreshToken string) (*model.AuthMutationResponse, error) {
+	accessToken, newRefreshToken, err := utils.RenewToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.AuthMutationResponse{
+		AccessToken:  &accessToken,
+		RefreshToken: &newRefreshToken,
+	}, nil
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, role model.UserType) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	var users []models.User
+	if err := database.DB.Where("role = ?", models.UserRole(role)).Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	result := make([]*model.User, len(users))
+	for i, user := range users {
+		result[i] = &model.User{
+			UserID:   user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     model.UserType(user.Role),
+		}
+	}
+
+	return result, nil
 }
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, userID string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: User - user"))
+	var user = &models.User{}
+	if err := database.DB.Where("id = ?", userID).First(user).Error; err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return &model.User{
+		UserID:   user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     model.UserType(user.Role),
+	}, nil
 }
 
 // Teams is the resolver for the teams field.
 func (r *queryResolver) Teams(ctx context.Context, userID string) ([]*model.Team, error) {
-	panic(fmt.Errorf("not implemented: Teams - teams"))
+	var teams []models.Team
+	var result []*model.Team
+
+	// Find all teams where the user is in the roster
+	if err := database.DB.Table("teams").
+		Select("teams.id, teams.team_name").
+		Joins("JOIN rosters ON rosters.team_id = teams.id").
+		Where("rosters.user_id = ?", userID).
+		Find(&teams).Error; err != nil {
+		return nil, err
+	}
+
+	// For each team, get its roster count and build the result
+	result = make([]*model.Team, len(teams))
+	for i, t := range teams {
+		var rosterCount int64
+		database.DB.Model(&models.Roster{}).Where("team_id = ?", t.ID).Count(&rosterCount)
+
+		result[i] = &model.Team{
+			TeamID:      t.ID,
+			TeamName:    t.TeamName,
+			RosterCount: int(rosterCount),
+		}
+	}
+
+	return result, nil
 }
 
 // Team is the resolver for the team field.
 func (r *queryResolver) Team(ctx context.Context, teamID string) (*model.Team, error) {
-	panic(fmt.Errorf("not implemented: Team - team"))
+	var team models.Team
+	if err := database.DB.Where("id = ?", teamID).First(&team).Error; err != nil {
+		return nil, fmt.Errorf("team not found")
+	}
+
+	// Get roster count
+	var rosterCount int64
+	database.DB.Model(&models.Roster{}).Where("team_id = ?", teamID).Count(&rosterCount)
+
+	// Get roster entries with associated users
+	var rosters []models.Roster
+	if err := database.DB.Preload("User").Where("team_id = ?", teamID).Find(&rosters).Error; err != nil {
+		return nil, err
+	}
+
+	// Separate users by role
+	var managers []*model.Manager
+	var members []*model.Member
+
+	for _, roster := range rosters {
+		if roster.User.Role == models.UserRole(models.RoleManager) {
+			managers = append(managers, &model.Manager{
+				ManagerID:   roster.User.ID,
+				ManagerName: roster.User.Username,
+			})
+		} else if roster.User.Role == models.UserRole(models.RoleMember) {
+			members = append(members, &model.Member{
+				MemberID:   roster.User.ID,
+				MemberName: roster.User.Username,
+			})
+		}
+	}
+
+	membersCount := len(members)
+	managersCount := len(managers)
+	return &model.Team{
+		TeamID:        team.ID,
+		TeamName:      team.TeamName,
+		Managers:      managers,
+		Members:       members,
+		RosterCount:   int(rosterCount),
+		TotalManagers: managersCount,
+		TotalMembers:  &membersCount,
+	}, nil
 }
 
 // MyTeams is the resolver for the myTeams field.
 func (r *queryResolver) MyTeams(ctx context.Context, userID string) ([]*model.Team, error) {
-	panic(fmt.Errorf("not implemented: MyTeams - myTeams"))
+	var teams []struct {
+		ID       string `gorm:"column:id"`
+		TeamName string `gorm:"column:team_name"`
+	}
+
+	// Find teams where the user is a leader
+	if err := database.DB.Table("teams").
+		Select("teams.id, teams.team_name").
+		Joins("JOIN rosters ON rosters.team_id = teams.id").
+		Where("rosters.user_id = ? AND rosters.is_leader = ?", userID, true).
+		Find(&teams).Error; err != nil {
+		return nil, err
+	}
+
+	// Convert to model.Team slice
+	result := make([]*model.Team, len(teams))
+	for i, t := range teams {
+		result[i] = &model.Team{
+			TeamID:   t.ID,
+			TeamName: t.TeamName,
+		}
+	}
+
+	return result, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
