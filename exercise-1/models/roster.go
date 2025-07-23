@@ -8,6 +8,5 @@ type Roster struct {
 	TeamID string `gorm:"type:uuid"`
 	Team   *Team  `gorm:"foreignKey:TeamID;references:ID"`
 
-	Role     UserRole `gorm:"type:varchar(20)"`
-	IsLeader bool     `gorm:"default:false"`
+	IsLeader bool `gorm:"default:false"`
 }

@@ -1,9 +1,301 @@
 basePath: /api
+definitions:
+  dto.AddManagerToTeamInput:
+    properties:
+      teamId:
+        type: string
+      userId:
+        type: string
+    required:
+    - teamId
+    - userId
+    type: object
+  dto.AddMemberToTeamInput:
+    properties:
+      teamId:
+        type: string
+      userId:
+        type: string
+    required:
+    - teamId
+    - userId
+    type: object
+  dto.CreateTeamInput:
+    properties:
+      managers:
+        items:
+          $ref: '#/definitions/dto.ManagerInput'
+        type: array
+      members:
+        items:
+          $ref: '#/definitions/dto.MemberInput'
+        type: array
+      teamName:
+        type: string
+    required:
+    - teamName
+    type: object
+  dto.ManagerInput:
+    properties:
+      managerId:
+        type: string
+      managerName:
+        type: string
+    required:
+    - managerId
+    - managerName
+    type: object
+  dto.MemberInput:
+    properties:
+      memberId:
+        type: string
+      memberName:
+        type: string
+    required:
+    - memberId
+    - memberName
+    type: object
 host: localhost:8080
 info:
   contact: {}
   description: User, Team, and Asset Management
   title: SETA Training API
   version: "1.0"
-paths: {}
+paths:
+  /teams:
+    post:
+      consumes:
+      - application/json
+      description: Create a new team with managers and members
+      parameters:
+      - description: Team data with managers and members
+        in: body
+        name: team
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTeamInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created team with roster
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+        "404":
+          description: User not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new team
+      tags:
+      - teams
+  /teams/{teamId}/managers:
+    post:
+      consumes:
+      - application/json
+      description: Add a user as a manager to a team
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: integer
+      - description: Manager data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddManagerToTeamInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+        "404":
+          description: Not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add manager to team
+      tags:
+      - teams
+  /teams/{teamId}/managers/{managerId}:
+    delete:
+      description: Remove a manager from a team
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: integer
+      - description: Manager ID
+        in: path
+        name: managerId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+        "404":
+          description: Not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove manager from team
+      tags:
+      - teams
+  /teams/{teamId}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a user as a member to a team
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: integer
+      - description: Member data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddMemberToTeamInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+        "404":
+          description: Not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add member to team
+      tags:
+      - teams
+  /teams/{teamId}/members/{memberId}:
+    delete:
+      description: Remove a member from a team
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: integer
+      - description: Member ID
+        in: path
+        name: memberId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+        "404":
+          description: Not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove member from team
+      tags:
+      - teams
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter JWT token like: Bearer <your-token>'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

@@ -19,6 +19,12 @@ import (
 // @description     User, Team, and Asset Management
 // @host            localhost:8080
 // @BasePath        /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter JWT token like: Bearer <your-token>
+
 func main() {
 	database.Connect()
 

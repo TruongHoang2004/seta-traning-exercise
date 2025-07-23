@@ -6,26 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
-	"os"
+	"seta-training-exercise-1/config"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secretKey = getSecretKey()
-
-func getSecretKey() string {
-	key := os.Getenv("JWT_ACCESS_SECRET")
-	if key == "" {
-		// Fallback to a default key only in development
-		key = "your_secret_key"
-		log.Println("Warning: Using default JWT secret key. Set JWT_ACCESS_SECRET environment variable in production.")
-	}
-	return key
-}
+var secretKey = []byte(config.GetConfig().JWTAccessSecret)
 
 type contextKey string
 
@@ -111,15 +100,15 @@ func ValidateToken(c *gin.Context, authHeader string) {
 		return
 	}
 
-	userID, ok := claims["user_id"].(string)
+	userID, ok := claims["userId"].(string)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id in token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid userId in token"})
 		c.Abort()
 		return
 	}
 
-	// Lưu user_id vào context của Gin
-	c.Set("user_id", userID)
+	// Lưu userId vào context của Gin
+	c.Set("userId", userID)
 
 	// Cũng có thể lưu vào request context nếu cần
 	ctx := context.WithValue(c.Request.Context(), userCtxKey, userID)
@@ -145,16 +134,16 @@ func extractOperationName(query string) string {
 	return ""
 }
 
-// GetUserIDFromGin lấy user_id từ Gin context
+// GetUserIDFromGin lấy userId từ Gin context
 func GetUserIDFromGin(c *gin.Context) (string, error) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userId")
 	if !exists {
 		return "", errors.New("no user in context")
 	}
 
 	userIDStr, ok := userID.(string)
 	if !ok {
-		return "", errors.New("invalid user_id type")
+		return "", errors.New("invalid userId type")
 	}
 
 	return userIDStr, nil
@@ -165,7 +154,7 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			// Không có token, tiếp tục mà không set user_id
+			// Không có token, tiếp tục mà không set userId
 			c.Next()
 			return
 		}
