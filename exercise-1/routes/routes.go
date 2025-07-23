@@ -14,16 +14,15 @@ import (
 func SetupRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 	{
-		api.POST("/login", controllers.Login)
-		api.POST("/users", controllers.CreateUser)
-
 		// Protected routes
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
-			protected.GET("/users", controllers.FetchUsers)
 			protected.POST("/teams", controllers.CreateTeam)
-			// Thêm các route khác sau
+			protected.POST("/teams/:teamId/members", controllers.AddMemberToTeam)
+			protected.DELETE("/teams/:teamId/members/:memberId", controllers.RemoveMemberFromTeam)
+			protected.POST("/teams/:teamId/managers", controllers.AddManagerToTeam)
+			protected.DELETE("/teams/:teamId/managers/:managerId", controllers.RemoveManagerFromTeam)
 		}
 	}
 

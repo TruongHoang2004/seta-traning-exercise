@@ -3,8 +3,8 @@ package models
 type UserRole string
 
 const (
-	RoleManager UserRole = "manager"
-	RoleMember  UserRole = "member"
+	RoleManager UserRole = "MANAGER"
+	RoleMember  UserRole = "MEMBER"
 )
 
 type User struct {

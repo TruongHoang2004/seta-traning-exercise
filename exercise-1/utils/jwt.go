@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"os"
+	"seta-training-exercise-1/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,17 +12,8 @@ var jwtAccessTokenSecret []byte
 var jwtRefreshTokenSecret []byte
 
 func init() {
-	accessSecret := os.Getenv("JWT_ACCESS_SECRET")
-	if accessSecret == "" {
-		accessSecret = "default-access-secret-key" // Fallback for development
-	}
-	jwtAccessTokenSecret = []byte(accessSecret)
-
-	refreshSecret := os.Getenv("JWT_REFRESH_SECRET")
-	if refreshSecret == "" {
-		refreshSecret = "default-refresh-secret-key" // Fallback for development
-	}
-	jwtRefreshTokenSecret = []byte(refreshSecret)
+	jwtAccessTokenSecret = []byte(config.GetConfig().JWTAccessSecret)
+	jwtRefreshTokenSecret = []byte(config.GetConfig().JWTRefreshSecret)
 }
 
 func GenerateJWTAccessToken(userID string, role string) (string, error) {
