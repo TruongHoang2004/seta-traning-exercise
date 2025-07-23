@@ -51,6 +51,18 @@ func Connect() {
 	if err := DB.AutoMigrate(&models.Roster{}); err != nil {
 		log.Fatal("Auto migration for Roster failed:", err)
 	}
+	if err := DB.AutoMigrate(&models.Folder{}); err != nil {
+		log.Fatal("Auto migration for Folder failed:", err)
+	}
+	if err := DB.AutoMigrate(&models.Note{}); err != nil {
+		log.Fatal("Auto migration for Note failed:", err)
+	}
+	if err := DB.AutoMigrate(&models.NoteShare{}); err != nil {
+		log.Fatal("Auto migration for NoteShare failed:", err)
+	}
+	if err := DB.AutoMigrate(&models.FolderShare{}); err != nil {
+		log.Fatal("Auto migration for FolderShare failed:", err)
+	}
 
 	log.Println("Auto migrations completed successfully")
 }

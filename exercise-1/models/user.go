@@ -15,4 +15,5 @@ type User struct {
 	Role         UserRole
 
 	Rosters []Roster `gorm:"foreignKey:UserID"`
+	Folders []Folder `gorm:"foreignKey:OwnerID"`
 }
