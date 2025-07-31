@@ -1,0 +1,16 @@
+{"L":"INFO","T":"2025-07-29T20:38:50.290+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-29T20:38:50.290+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-29T20:41:51.938+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-29T20:41:51.938+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T10:48:20.985+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-31T10:48:20.985+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T10:48:30.330+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-31T10:48:30.331+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T10:50:21.083+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-31T10:50:21.084+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T11:56:15.761+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-31T11:56:15.761+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T12:00:54.568+0700","C":"logger/logger.go:63","M":"Server starting on port 8080"}
+{"L":"INFO","T":"2025-07-31T12:00:54.568+0700","C":"logger/logger.go:63","M":"Swagger at http://localhost:8080/swagger/index.html"}
+{"L":"INFO","T":"2025-07-31T12:01:03.645+0700","C":"logger/logger.go:63","M":"HTTP Request","status":401,"method":"POST","path":"/api/teams","latency":"48.534µs","client_ip":"::1","user_agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"}
+{"L":"INFO","T":"2025-07-31T12:01:40.317+0700","C":"logger/logger.go:63","M":"HTTP Request","status":401,"method":"POST","path":"/api/teams","latency":"12.765µs","client_ip":"::1","user_agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"}
