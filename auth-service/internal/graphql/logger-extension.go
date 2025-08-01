@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"log"
 	"time"
 	"user-service/pkg/logger"
 
@@ -23,26 +22,25 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 	start := time.Now()
 	rc := graphql.GetOperationContext(ctx)
 
-	// Lấy response handler
 	respHandler := next(ctx)
 
 	return func(ctx context.Context) *graphql.Response {
-		resp := respHandler(ctx) // thực thi xử lý thật sự ở đây
+		resp := respHandler(ctx)
 		latency := time.Since(start)
 
-		// Log với
-		logger.Info("GraphQL request processed",
-			"latency", latency.String(),
+		fields := []any{
 			"operation", rc.OperationName,
-			"operationType", string(rc.Operation.Operation), // query / mutation
-			"query", rc.RawQuery,
+			"operationType", string(rc.Operation.Operation),
+			"latency", latency,
 			"variables", rc.Variables,
-			"errorCount", len(resp.Errors), // số lỗi (nếu có)
-		)
+			"errorCount", len(resp.Errors),
+		}
 
-		// In log bằng log.Printf (tuỳ mục đích)
-		log.Printf("[GraphQL] %s: %s", rc.Operation.Operation, rc.RawQuery)
-		log.Printf("[Variables]: %v", rc.Variables)
+		if len(resp.Errors) > 0 {
+			fields = append(fields, "errors", resp.Errors)
+		}
+
+		logger.Info("GraphQL request processed", fields...)
 
 		return resp
 	}
