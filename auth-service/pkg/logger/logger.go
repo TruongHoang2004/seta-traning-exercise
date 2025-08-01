@@ -1,105 +1,89 @@
 package logger
 
 import (
+	"io"
 	"os"
+	"sync"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"github.com/rs/zerolog"
 )
 
 var (
-	log     *zap.Logger
-	logFile *os.File
+	log      zerolog.Logger
+	logFile  *os.File
+	initOnce sync.Once
 )
 
-// Init initializes the zap logger with file + console output.
-func Init(isProduction bool, logFilePath string, level zapcore.Level) {
-	var encoderConfig zapcore.EncoderConfig
-	if isProduction {
-		encoderConfig = zap.NewProductionEncoderConfig()
-	} else {
-		encoderConfig = zap.NewDevelopmentEncoderConfig()
-	}
+// Init initializes the zerolog logger with both file and console outputs.
+func Init(isProduction bool, logFilePath string, level zerolog.Level) {
+	initOnce.Do(func() {
+		// Open log file
+		file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic("Failed to open log file: " + err.Error())
+		}
+		logFile = file
 
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		// Multi writer: file + console
+		var writers []io.Writer
+		writers = append(writers, logFile)
 
-	// Open log file
-	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic("Failed to open log file: " + err.Error())
-	}
-	logFile = file
+		if isProduction {
+			// In production, log as JSON to stdout
+			writers = append(writers, os.Stdout)
+			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+		} else {
+			// In development, use console writer for pretty printing
+			consoleWriter := zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+				w.Out = os.Stdout
+				w.TimeFormat = "2006-01-02 15:04:05"
+			})
+			writers = append(writers, consoleWriter)
+		}
 
-	// File writer core (JSON)
-	fileCore := zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderConfig),
-		zapcore.AddSync(file),
-		level,
-	)
-
-	// Console writer core (pretty)
-	consoleCore := zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderConfig),
-		zapcore.AddSync(os.Stdout),
-		level,
-	)
-
-	// Combine both cores
-	core := zapcore.NewTee(fileCore, consoleCore)
-
-	// Create logger with caller and stacktrace options
-	log = zap.New(core,
-		zap.AddCaller(),
-		zap.AddStacktrace(zapcore.ErrorLevel),
-	)
-
-	// Optional: make zap global
-	zap.ReplaceGlobals(log)
+		multi := io.MultiWriter(writers...)
+		log = zerolog.New(multi).
+			Level(level).
+			With().
+			Timestamp().
+			Caller().
+			Logger()
+	})
 }
 
 // Info logs an info-level message.
-func Info(msg string, fields ...zap.Field) {
-	if log != nil {
-		log.Info(msg, fields...)
-	}
+func Info(msg string, fields ...any) {
+	log.Info().Fields(fields).Msg(msg)
 }
 
 // Error logs an error-level message.
-func Error(msg string, fields ...zap.Field) {
-	if log != nil {
-		log.Error(msg, fields...)
-	}
+func Error(msg string, fields ...any) {
+	log.Error().Fields(fields).Msg(msg)
 }
 
 // Debug logs a debug-level message.
-func Debug(msg string, fields ...zap.Field) {
-	if log != nil {
-		log.Debug(msg, fields...)
-	}
+func Debug(msg string, fields ...any) {
+	log.Debug().Fields(fields).Msg(msg)
 }
 
 // Warn logs a warn-level message.
-func Warn(msg string, fields ...zap.Field) {
-	if log != nil {
-		log.Warn(msg, fields...)
-	}
+func Warn(msg string, fields ...any) {
+	log.Warn().Fields(fields).Msg(msg)
 }
 
-// Sync flushes the logger buffers.
-func Sync() {
-	if log != nil {
-		log.Sync()
-	}
+// Fatal logs a fatal-level message and exits.
+func Fatal(msg string, fields ...any) {
+	log.Fatal().Fields(fields).Msg(msg)
 }
 
-// Close safely closes the log file.
+// Close closes the log file if open.
 func Close() {
 	if logFile != nil {
 		logFile.Close()
 	}
 }
 
-// L returns the underlying *zap.Logger
-func L() *zap.Logger {
+// L returns the underlying zerolog.Logger
+func L() zerolog.Logger {
 	return log
 }

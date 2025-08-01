@@ -97,8 +97,6 @@ definitions:
         items:
           $ref: '#/definitions/models.Note'
         type: array
-      owner:
-        $ref: '#/definitions/models.User'
       ownerID:
         type: string
     type: object
@@ -112,68 +110,11 @@ definitions:
         type: string
       id:
         type: string
-      owner:
-        $ref: '#/definitions/models.User'
       ownerID:
         type: string
       title:
         type: string
     type: object
-  models.Roster:
-    properties:
-      id:
-        type: string
-      isLeader:
-        type: boolean
-      team:
-        $ref: '#/definitions/models.Team'
-      teamID:
-        type: string
-      user:
-        $ref: '#/definitions/models.User'
-      userID:
-        type: string
-    type: object
-  models.Team:
-    properties:
-      id:
-        type: string
-      rosters:
-        items:
-          $ref: '#/definitions/models.Roster'
-        type: array
-      teamName:
-        type: string
-    type: object
-  models.User:
-    properties:
-      email:
-        type: string
-      folders:
-        items:
-          $ref: '#/definitions/models.Folder'
-        type: array
-      id:
-        type: string
-      passwordHash:
-        type: string
-      role:
-        $ref: '#/definitions/models.UserRole'
-      rosters:
-        items:
-          $ref: '#/definitions/models.Roster'
-        type: array
-      username:
-        type: string
-    type: object
-  models.UserRole:
-    enum:
-    - MANAGER
-    - MEMBER
-    type: string
-    x-enum-varnames:
-    - RoleManager
-    - RoleMember
 host: localhost:8080
 info:
   contact: {}

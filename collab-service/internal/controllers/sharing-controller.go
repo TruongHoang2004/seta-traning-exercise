@@ -29,7 +29,7 @@ func ShareFolder(c *gin.Context) {
 	}
 
 	folderId := c.Param("folderId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	// Check ownership
 	var folder models.Folder
@@ -65,7 +65,7 @@ func ShareFolder(c *gin.Context) {
 func RevokeFolderShare(c *gin.Context) {
 	folderId := c.Param("folderId")
 	sharedUserId := c.Param("userId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var folder models.Folder
 	if err := database.DB.Where("id = ? AND owner_id = ?", folderId, userId).First(&folder).Error; err != nil {
@@ -108,7 +108,7 @@ func ShareNote(c *gin.Context) {
 	}
 
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var note models.Note
 	if err := database.DB.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {
@@ -142,7 +142,7 @@ func ShareNote(c *gin.Context) {
 func RevokeNoteShare(c *gin.Context) {
 	noteId := c.Param("noteId")
 	sharedUserId := c.Param("userId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var note models.Note
 	if err := database.DB.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {

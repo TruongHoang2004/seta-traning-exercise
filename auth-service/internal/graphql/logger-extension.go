@@ -7,7 +7,6 @@ import (
 	"user-service/pkg/logger"
 
 	"github.com/99designs/gqlgen/graphql"
-	"go.uber.org/zap"
 )
 
 type LoggerExtension struct{}
@@ -31,14 +30,14 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 		resp := respHandler(ctx) // thực thi xử lý thật sự ở đây
 		latency := time.Since(start)
 
-		// Log với zap
+		// Log với
 		logger.Info("GraphQL request processed",
-			zap.String("latency", latency.String()),
-			zap.String("operation", rc.OperationName),
-			zap.String("operationType", string(rc.Operation.Operation)), // query / mutation
-			zap.String("query", rc.RawQuery),
-			zap.Any("variables", rc.Variables),
-			zap.Int("errorCount", len(resp.Errors)), // số lỗi (nếu có)
+			"latency", latency.String(),
+			"operation", rc.OperationName,
+			"operationType", string(rc.Operation.Operation), // query / mutation
+			"query", rc.RawQuery,
+			"variables", rc.Variables,
+			"errorCount", len(resp.Errors), // số lỗi (nếu có)
 		)
 
 		// In log bằng log.Printf (tuỳ mục đích)

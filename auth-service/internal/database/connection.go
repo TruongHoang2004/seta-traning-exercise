@@ -8,7 +8,6 @@ import (
 	"user-service/pkg/logger"
 
 	"github.com/joho/godotenv"
-	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -19,7 +18,7 @@ func Connect() {
 	// Load file .env
 	err := godotenv.Load()
 	if err != nil {
-		logger.Error("Error loading .env file", zap.Error(err))
+		logger.Error("Error loading .env file", err)
 	}
 
 	// Lấy thông tin từ biến môi trường
@@ -38,13 +37,13 @@ func Connect() {
 	var dbErr error
 	DB, dbErr = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if dbErr != nil {
-		logger.Error("Failed to connect to database", zap.Error(dbErr))
+		logger.Error("Failed to connect to database", dbErr)
 	}
 
 	// Get the underlying SQL DB object
 	sqlDB, err := DB.DB()
 	if err != nil {
-		logger.Error("Failed to get SQL DB object", zap.Error(err))
+		logger.Error("Failed to get SQL DB object", err)
 	}
 
 	// Set connection pool settings
@@ -60,7 +59,7 @@ func Connect() {
 	log.Println("Running auto migrations...")
 
 	if err := DB.AutoMigrate(&models.User{}); err != nil {
-		logger.Error("Auto migration for User failed", zap.Error(err))
+		logger.Error("Auto migration for User failed", err)
 	}
 
 	logger.Info("Auto migrations completed successfully")
@@ -69,12 +68,12 @@ func Connect() {
 func Close() {
 	sqlDB, err := DB.DB()
 	if err != nil {
-		logger.Error("Failed to get SQL DB object for closing", zap.Error(err))
+		logger.Error("Failed to get SQL DB object for closing", err)
 		return
 	}
 
 	if err := sqlDB.Close(); err != nil {
-		logger.Error("Failed to close database connection", zap.Error(err))
+		logger.Error("Failed to close database connection", err)
 	} else {
 		logger.Info("Database connection closed successfully")
 	}

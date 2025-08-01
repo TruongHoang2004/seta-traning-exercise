@@ -26,7 +26,7 @@ func SetupRoutes() *gin.Engine {
 	{
 		// Protected routes
 		protected := api.Group("/")
-		// protected.Use(middleware.AuthMiddleware()) // JWT Auth
+		protected.Use(middleware.AuthMiddleware()) // JWT Auth
 		{
 			// Team management
 			protected.POST("/teams", controllers.CreateTeam)

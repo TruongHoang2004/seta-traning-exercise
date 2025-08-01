@@ -5,6 +5,7 @@ import (
 	"collab-service/internal/dto"
 	"collab-service/internal/middleware"
 	"collab-service/internal/models"
+	"collab-service/pkg/logger"
 	"fmt"
 	"net/http"
 
@@ -32,24 +33,13 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
-	userId, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	var user models.User
-	result := database.DB.First(&user, "id = ?", userId)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	note := models.Note{
 		Title:    noteDTO.Title,
 		Body:     noteDTO.Body,
 		FolderID: noteDTO.FolderID,
-		OwnerID:  user.ID,
+		OwnerID:  userId,
 	}
 
 	if err := database.DB.Create(&note).Error; err != nil {
@@ -57,6 +47,7 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
+	logger.Info("Note created successfully", "noteId", note.ID, "ownerId", userId)
 	c.JSON(http.StatusCreated, note)
 }
 
@@ -73,7 +64,7 @@ func CreateNote(c *gin.Context) {
 // @Router /notes/{noteId} [get]
 func GetNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	type NoteWithAccess struct {
 		models.Note
@@ -127,7 +118,7 @@ func GetNote(c *gin.Context) {
 // @Router /notes/{noteId} [put]
 func UpdateNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var noteDTO dto.NoteDTO
 	if err := c.ShouldBindJSON(&noteDTO); err != nil {
@@ -192,7 +183,7 @@ func UpdateNote(c *gin.Context) {
 // @Router /notes/{noteId} [delete]
 func DeleteNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var note models.Note
 	result := database.DB.First(&note, "id = ?", noteId)

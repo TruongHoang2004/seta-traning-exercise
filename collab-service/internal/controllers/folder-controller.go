@@ -5,6 +5,7 @@ import (
 	"collab-service/internal/dto"
 	"collab-service/internal/middleware"
 	"collab-service/internal/models"
+	"collab-service/pkg/logger"
 	"fmt"
 	"net/http"
 
@@ -33,15 +34,11 @@ func CreateFolder(c *gin.Context) {
 		return
 	}
 
-	userId, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	// Kiểm tra folder trùng tên (tối ưu hóa bằng SELECT EXISTS)
 	var exists bool
-	err = database.DB.
+	err := database.DB.
 		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE owner_id = ? AND name = ?) AS exists", userId, folderDTO.Name).
 		Scan(&exists).Error
 	if err != nil {
@@ -79,21 +76,20 @@ func CreateFolder(c *gin.Context) {
 // @Router /folders/{folderId} [get]
 func GetFolder(c *gin.Context) {
 	folderId := c.Param("folderId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	type FolderWithAccess struct {
 		models.Folder
-		Access     *string // nullable vì user có thể không có chia sẻ
-		UserExists *string // check nếu user tồn tại
+		Access *string // nullable: nếu user không được chia sẻ thì nil
 	}
 
 	var folder FolderWithAccess
 
+	// Truy vấn lấy folder và access (nếu có)
 	result := database.DB.
 		Table("folders").
-		Select("folders.*, folder_shares.access as access, users.id as user_exists").
+		Select("folders.*, folder_shares.access AS access").
 		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
-		Joins("LEFT JOIN users ON users.id = ?", userId).
 		Where("folders.id = ?", folderId).
 		First(&folder)
 
@@ -102,20 +98,20 @@ func GetFolder(c *gin.Context) {
 		return
 	}
 
-	if folder.UserExists == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+	// Nếu là chủ sở hữu → cho phép
+	if folder.OwnerID == userId {
+		c.JSON(http.StatusOK, folder.Folder)
 		return
 	}
 
-	if folder.OwnerID != userId {
-		if folder.Access == nil || (*folder.Access != string(models.AccessLevelRead) && *folder.Access != string(models.AccessLevelWrite)) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to access this folder"})
-			return
-		}
+	// Nếu không phải chủ sở hữu → cần có access
+	if folder.Access == nil || (*folder.Access != string(models.AccessLevelRead) && *folder.Access != string(models.AccessLevelWrite)) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to access this folder"})
+		return
 	}
 
+	// Có quyền truy cập
 	c.JSON(http.StatusOK, folder.Folder)
-
 }
 
 // UpdateFolder updates a folder's name and metadata
@@ -134,7 +130,7 @@ func GetFolder(c *gin.Context) {
 // @Router /folders/{folderId} [put]
 func UpdateFolder(c *gin.Context) {
 	folderId := c.Param("folderId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var folderDTO dto.FolderDTO
 	if err := c.ShouldBindJSON(&folderDTO); err != nil {
@@ -144,17 +140,16 @@ func UpdateFolder(c *gin.Context) {
 
 	type FolderWithAccess struct {
 		models.Folder
-		Access     *string // nullable: nếu không có chia sẻ
-		UserExists *string
+		Access *string // nullable nếu không có chia sẻ
 	}
 
 	var folder FolderWithAccess
 
+	// Truy vấn: lấy folder + quyền truy cập (nếu có)
 	result := database.DB.
 		Table("folders").
-		Select("folders.*, folder_shares.access as access, users.id as user_exists").
+		Select("folders.*, folder_shares.access AS access").
 		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
-		Joins("LEFT JOIN users ON users.id = ?", userId).
 		Where("folders.id = ?", folderId).
 		First(&folder)
 
@@ -163,12 +158,9 @@ func UpdateFolder(c *gin.Context) {
 		return
 	}
 
-	if folder.UserExists == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-		return
-	}
-
+	// Nếu là owner thì luôn có quyền
 	if folder.OwnerID != userId {
+		// Không phải owner → phải có quyền WRITE
 		if folder.Access == nil || *folder.Access != string(models.AccessLevelWrite) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have WRITE permission on this folder"})
 			return
@@ -199,37 +191,55 @@ func UpdateFolder(c *gin.Context) {
 // @Failure 404 {object} object "Folder not found"
 // @Router /folders/{folderId} [delete]
 func DeleteFolder(c *gin.Context) {
-	// add log when error
 	folderId := c.Param("folderId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
-	// Truy vấn folder + xác thực quyền sở hữu
 	var folder models.Folder
 	result := database.DB.First(&folder, "id = ?", folderId)
 	if result.Error != nil {
+		logger.Warn("Folder not found", "folderId", folderId, "userId", userId, "error", result.Error)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
 		return
 	}
 
-	// Chỉ cho phép owner xóa
 	if folder.OwnerID != userId {
+		logger.Warn("Permission denied to delete folder", "folderId", folderId, "userId", userId)
 		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this folder"})
 		return
 	}
 
-	// Bắt đầu transaction để đảm bảo atomic
 	tx := database.DB.Begin()
 
-	// Xóa các ghi chú trong folder
+	// Lấy tất cả note ID trong folder
+	var noteIDs []string
+	if err := tx.Model(&models.Note{}).Where("folder_id = ?", folderId).Pluck("id", &noteIDs).Error; err != nil {
+		logger.Error("Failed to get notes in folder", "folderId", folderId, "error", err)
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve notes"})
+		return
+	}
+
+	// Xóa note_shares liên quan đến các note
+	if len(noteIDs) > 0 {
+		if err := tx.Where("note_id IN ?", noteIDs).Delete(&models.NoteShare{}).Error; err != nil {
+			logger.Error("Failed to delete note shares", "folderId", folderId, "error", err)
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note shares"})
+			return
+		}
+	}
+
+	// Xóa các note
 	if err := tx.Where("folder_id = ?", folderId).Delete(&models.Note{}).Error; err != nil {
-		// log.Error()
+		logger.Error("Failed to delete notes", "folderId", folderId, "error", err)
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete notes"})
 		return
 	}
 
-	// Xóa các quan hệ chia sẻ
+	// Xóa chia sẻ folder
 	if err := tx.Where("folder_id = ?", folderId).Delete(&models.FolderShare{}).Error; err != nil {
+		logger.Error("Failed to delete folder shares", "folderId", folderId, "error", err)
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete folder shares"})
 		return
@@ -237,13 +247,14 @@ func DeleteFolder(c *gin.Context) {
 
 	// Xóa folder
 	if err := tx.Delete(&folder).Error; err != nil {
+		logger.Error("Failed to delete folder", "folderId", folderId, "error", err)
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete folder"})
 		return
 	}
 
-	// Commit transaction
 	tx.Commit()
 
+	logger.Info("Folder deleted successfully", "folderId", folderId, "userId", userId)
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Folder %s deleted successfully", folderId)})
 }

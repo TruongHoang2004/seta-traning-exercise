@@ -16,15 +16,15 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog"
 	"github.com/vektah/gqlparser/v2/ast"
-	"go.uber.org/zap/zapcore"
 )
 
 const defaultPort = "4000"
 
 func main() {
 	// Initialize logger
-	logger.Init(false, "logs/auth_service.log", zapcore.DebugLevel)
+	logger.Init(false, "logs/auth_service.log", zerolog.DebugLevel)
 	database.Connect()
 	defer database.Close()
 

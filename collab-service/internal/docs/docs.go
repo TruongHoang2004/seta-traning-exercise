@@ -1361,9 +1361,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.Note"
                     }
                 },
-                "owner": {
-                    "$ref": "#/definitions/models.User"
-                },
                 "ownerID": {
                     "type": "string"
                 }
@@ -1384,9 +1381,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "owner": {
-                    "$ref": "#/definitions/models.User"
-                },
                 "ownerID": {
                     "type": "string"
                 },
@@ -1394,89 +1388,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "models.Roster": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "isLeader": {
-                    "type": "boolean"
-                },
-                "team": {
-                    "$ref": "#/definitions/models.Team"
-                },
-                "teamID": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/models.User"
-                },
-                "userID": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Team": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "rosters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Roster"
-                    }
-                },
-                "teamName": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "folders": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Folder"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "passwordHash": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/models.UserRole"
-                },
-                "rosters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Roster"
-                    }
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.UserRole": {
-            "type": "string",
-            "enum": [
-                "MANAGER",
-                "MEMBER"
-            ],
-            "x-enum-varnames": [
-                "RoleManager",
-                "RoleMember"
-            ]
         }
     },
     "securityDefinitions": {

@@ -2,10 +2,10 @@
 package middleware
 
 import (
+	"collab-service/pkg/client"
 	"collab-service/pkg/config"
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,100 +23,56 @@ func AuthMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		ValidateToken(c, authHeader)
+		if authHeader == "" {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized: No Authorization header"})
+			return
+		}
+
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		ValidateToken(c, tokenStr)
 	}
 }
 
 // ValidateToken kiểm tra tính hợp lệ của token
 func ValidateToken(c *gin.Context, authHeader string) {
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-		c.Abort()
-		return
-	}
 
-	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenStr == authHeader {
-		// Không có "Bearer " prefix
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Bearer token required"})
-		c.Abort()
-		return
-	}
-
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		// Kiểm tra signing method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-		return []byte(secretKey), nil
-	})
-
+	user, err := client.NewGraphQLClient(config.GetConfig().UserServiceEndpoint).ValidateToken(c.Request.Context(), authHeader)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		c.Abort()
+		c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	if !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is not valid"})
-		c.Abort()
-		return
-	}
+	// Giữ đúng kiểu dữ liệu
+	c.Set("userId", user.UserID)
+	c.Set("userRole", user.Role)
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid claims"})
-		c.Abort()
-		return
-	}
-
-	userID, ok := claims["userId"].(string)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid userId in token"})
-		c.Abort()
-		return
-	}
-
-	// Lưu userId vào context của Gin
-	c.Set("userId", userID)
-
-	// Cũng có thể lưu vào request context nếu cần
-	ctx := context.WithValue(c.Request.Context(), userCtxKey, userID)
-	c.Request = c.Request.WithContext(ctx)
 	c.Next()
-
 }
 
-func extractOperationName(query string) string {
-	query = strings.TrimSpace(query)
-	lines := strings.Split(query, "\n")
-	if len(lines) == 0 {
-		return ""
-	}
-
-	firstLine := strings.TrimSpace(lines[0])
-	parts := strings.Fields(firstLine)
-
-	// Ví dụ: mutation login { ... } hoặc query me { ... }
-	if len(parts) >= 2 {
-		return parts[1] // login hoặc renewToken
-	}
-	return ""
-}
-
-// GetUserIDFromGin lấy userId từ Gin context
-func GetUserIDFromGin(c *gin.Context) (string, error) {
+// GetUserInfoFromGin lấy userId và userRole từ Gin context
+func GetUserInfoFromGin(c *gin.Context) (string, client.UserType) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		return "", errors.New("no user in context")
+		c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized: No user in context"})
+		return "", ""
 	}
 
-	userIDStr, ok := userID.(string)
-	if !ok {
-		return "", errors.New("invalid userId type")
+	userRole, exists := c.Get("userRole")
+	if !exists {
+		c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized: No user role in context"})
+		return "", ""
 	}
 
-	return userIDStr, nil
+	// Ép kiểu về UserType (hoặc UserRole nếu bạn dùng tên đó)
+	userIDStr, ok1 := userID.(string)
+	userRoleTyped, ok2 := userRole.(client.UserType)
+
+	if !ok1 || !ok2 {
+		c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized: Invalid user info type"})
+		return "", ""
+	}
+
+	return userIDStr, userRoleTyped
 }
 
 // OptionalAuthMiddleware - middleware tùy chọn, không bắt buộc token

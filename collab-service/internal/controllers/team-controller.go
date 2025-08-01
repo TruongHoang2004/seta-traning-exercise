@@ -6,6 +6,8 @@ import (
 	"collab-service/internal/middleware"
 	"collab-service/internal/models"
 	"collab-service/pkg/client"
+	"collab-service/pkg/config"
+	"collab-service/pkg/logger"
 	"fmt"
 	"net/http"
 
@@ -28,18 +30,10 @@ import (
 // @Router /teams [post]
 func CreateTeam(c *gin.Context) {
 	// 1. Xác thực người dùng và quyền hạn
-	userID, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	userID, userRole := middleware.GetUserInfoFromGin(c)
 
-	var creator models.User
-	if err := database.DB.First(&creator, "id = ?", userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-		return
-	}
-	if creator.Role != models.RoleManager {
+	if userRole != client.UserType(client.UserTypeManager) {
+		logger.Info("Unauthorized access", "userId", userID, "role", userRole)
 		c.JSON(http.StatusForbidden, gin.H{"error": "only managers can create teams"})
 		return
 	}
@@ -47,6 +41,7 @@ func CreateTeam(c *gin.Context) {
 	// 2. Đọc input
 	var input dto.CreateTeamInput
 	if err := c.ShouldBindJSON(&input); err != nil {
+		logger.Info("Invalid input", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -60,49 +55,55 @@ func CreateTeam(c *gin.Context) {
 		memberIDs = append(memberIDs, m.MemberID)
 	}
 
-	// 4. Kiểm tra và lấy thông tin các manager theo một truy vấn duy nhất
-	var managers []models.User
+	// 4. Khởi tạo GraphQL client
+	userClient := client.NewGraphQLClient(config.GetConfig().UserServiceEndpoint)
+
+	// 5. Kiểm tra và lấy thông tin các manager
 	if len(managerIDs) > 0 {
-		database.DB.Where("id IN ?", managerIDs).Find(&managers)
-		if len(managers) != len(managerIDs) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "some manager IDs not found"})
-			return
-		}
-		for _, u := range managers {
-			if u.Role != models.RoleManager {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("user %s is not a manager", u.ID)})
+		for _, managerID := range managerIDs {
+			manager, err := userClient.GetUser(managerID)
+			if err != nil {
+				logger.Info("Manager not found", "managerId", managerID, "error", err)
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("manager %s not found", managerID)})
+				return
+			}
+			if manager.Role != client.UserTypeManager {
+				logger.Info("Invalid user role", "userId", manager.UserID, "role", manager.Role)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("user %s is not a manager", manager.UserID)})
 				return
 			}
 		}
 	}
 
-	// 5. Kiểm tra và lấy thông tin các member theo một truy vấn duy nhất
-	var members []models.User
+	// 6. Kiểm tra và lấy thông tin các member
 	if len(memberIDs) > 0 {
-		database.DB.Where("id IN ?", memberIDs).Find(&members)
-		if len(members) != len(memberIDs) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "some member IDs not found"})
-			return
-		}
-		for _, u := range members {
-			if u.Role != models.RoleMember {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("user %s is not a member", u.ID)})
+		for _, memberID := range memberIDs {
+			member, err := userClient.GetUser(memberID)
+			if err != nil {
+				logger.Error("Member not found", "memberId", memberID, "error", err)
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("member %s not found", memberID)})
+				return
+			}
+			if member.Role != client.UserTypeMember {
+				logger.Info("Invalid user role", "userId", member.UserID, "role", member.Role)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("user %s is not a member", member.UserID)})
 				return
 			}
 		}
 	}
 
-	// 6. Kiểm tra trùng lặp ID giữa managers và members
+	// 7. Kiểm tra trùng lặp ID giữa managers và members
 	userMap := make(map[string]bool)
 	for _, id := range append(managerIDs, memberIDs...) {
 		if userMap[id] {
+			logger.Error("Duplicate user in managers or members list", "userId", id)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "duplicate user in managers or members list"})
 			return
 		}
 		userMap[id] = true
 	}
 
-	// 7. Kiểm tra xem người tạo đã có trong managers chưa
+	// 8. Kiểm tra xem người tạo đã có trong managers chưa
 	creatorInList := false
 	for _, id := range managerIDs {
 		if id == userID {
@@ -111,16 +112,17 @@ func CreateTeam(c *gin.Context) {
 		}
 	}
 
-	// 8. Tạo transaction và thêm team mới
+	// 9. Tạo transaction và thêm team mới
 	tx := database.DB.Begin()
 	team := models.Team{TeamName: input.TeamName}
 	if err := tx.Create(&team).Error; err != nil {
 		tx.Rollback()
+		logger.Error("Failed to create team", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create team"})
 		return
 	}
 
-	// 9. Chuẩn bị danh sách các roster mới
+	// 10. Chuẩn bị danh sách các roster mới
 	var rosters []models.Roster
 	// Thêm creator làm leader nếu chưa có
 	if !creatorInList {
@@ -136,25 +138,28 @@ func CreateTeam(c *gin.Context) {
 		rosters = append(rosters, models.Roster{UserID: id, TeamID: team.ID, IsLeader: false})
 	}
 
-	// 10. Thêm tất cả các roster trong một lần insert
+	// 11. Thêm tất cả các roster trong một lần insert
 	if len(rosters) > 0 {
 		if err := tx.Create(&rosters).Error; err != nil {
 			tx.Rollback()
+			logger.Error("Failed to create team rosters", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign members to team"})
 			return
 		}
 	}
 
-	// 11. Commit transaction
+	// 12. Commit transaction
 	tx.Commit()
 
-	// 12. Trả về dữ liệu team kèm danh sách roster (eager load user)
+	// 13. Trả về dữ liệu team kèm danh sách roster (không còn eager load User)
 	var teamWithRoster models.Team
-	if err := database.DB.Preload("Rosters.User").First(&teamWithRoster, team.ID).Error; err != nil {
+	if err := database.DB.Preload("Rosters").First(&teamWithRoster, team.ID).Error; err != nil {
+		logger.Error("Failed to load team with roster", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load team data"})
 		return
 	}
 
+	logger.Info("Team created successfully", "teamId", team.ID, "teamName", team.TeamName)
 	c.JSON(http.StatusCreated, gin.H{"message": "team created successfully", "team": teamWithRoster})
 }
 
@@ -175,11 +180,7 @@ func CreateTeam(c *gin.Context) {
 // @Router /teams/{teamId}/members [post]
 func AddMemberToTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
-	userID, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	userID, _ := middleware.GetUserInfoFromGin(c)
 
 	// 2. Lấy teamID từ URL
 	teamID := c.Param("teamId")
@@ -187,6 +188,7 @@ func AddMemberToTeam(c *gin.Context) {
 	// 3. Lấy input
 	var input dto.AddMemberToTeamInput
 	if err := c.ShouldBindJSON(&input); err != nil {
+		logger.Info("Invalid input", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -194,60 +196,70 @@ func AddMemberToTeam(c *gin.Context) {
 	// 4. Kiểm tra team tồn tại
 	var team models.Team
 	if err := database.DB.First(&team, "id = ?", teamID).Error; err != nil {
+		logger.Info("Team not found", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
 
-	// 5. Lấy thông tin người muốn thêm
-	userClient := client.NewGraphQLClient("http://localhost:4000/query")
+	// 5. Khởi tạo GraphQL client
+	userClient := client.NewGraphQLClient(config.GetConfig().UserServiceEndpoint)
+
+	// 6. Lấy thông tin người muốn thêm
 	memberToAdd, err := userClient.GetUser(input.UserID)
 	if err != nil {
+		logger.Info("User to add not found", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "user to add not found"})
 		return
 	}
 
-	// Convert client.User to models.User
-	// 6. Kiểm tra user hiện tại có trong roster và là manager
+	// 7. Kiểm tra user hiện tại có trong roster
 	var currentRoster models.Roster
 	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).
 		First(&currentRoster).Error; err != nil {
+		logger.Info("Current user not in team roster", "error", err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "current user is not in team roster"})
 		return
 	}
 
-	// Get current user details
+	// 8. Lấy thông tin user hiện tại và kiểm tra quyền
 	currentUser, err := userClient.GetUser(userID)
 	if err != nil {
+		logger.Error("Failed to get current user details", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get current user details"})
 		return
 	}
 
 	if currentUser.Role != client.UserTypeManager {
+		logger.Info("Unauthorized access", "userId", userID, "role", currentUser.Role)
 		c.JSON(http.StatusForbidden, gin.H{"error": "only managers can add members to teams"})
 		return
 	}
 
-	// 7. Chỉ được thêm member (không phải manager)
+	// 9. Chỉ được thêm member (không phải manager)
 	if memberToAdd.Role == client.UserTypeManager {
+		logger.Info("Cannot add manager as member", "userId", memberToAdd.UserID)
 		c.JSON(http.StatusForbidden, gin.H{"error": "use the managers endpoint to add managers"})
 		return
 	}
 
-	// 8. Kiểm tra nếu người dùng đã tồn tại trong roster
+	// 10. Kiểm tra nếu người dùng đã tồn tại trong roster
 	var existingRoster models.Roster
 	if err := database.DB.Where("user_id = ? AND team_id = ?", input.UserID, teamID).
 		First(&existingRoster).Error; err == nil {
+		logger.Info("User already in team roster", "userId", input.UserID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user already in the team"})
 		return
 	}
 
-	// 9. Thêm thành viên mới vào roster
+	// 11. Thêm thành viên mới vào roster
 	newMember := models.Roster{UserID: input.UserID, TeamID: teamID, IsLeader: false}
 	if err := database.DB.Create(&newMember).Error; err != nil {
+		logger.Error("Failed to add member to team", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add member to team"})
 		return
 	}
 
+	logger.Info("Member added to team", "teamId", teamID, "userId", input.UserID)
 	c.JSON(http.StatusCreated, gin.H{"message": "member added successfully"})
 }
 
@@ -266,43 +278,37 @@ func AddMemberToTeam(c *gin.Context) {
 // @Router /teams/{teamId}/members/{memberId} [delete]
 func RemoveMemberFromTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
-	userID, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	userID, userRole := middleware.GetUserInfoFromGin(c)
 
 	// 2. Lấy teamID và memberID từ URL
 	teamID := c.Param("teamId")
 	memberID := c.Param("memberId")
 
-	// 3. Kiểm tra user hiện tại có trong đội (và là manager) (eager load User)
+	// 3. Kiểm tra user hiện tại có trong đội
 	var currentRoster models.Roster
-	if err := database.DB.Preload("User").
-		Where("user_id = ? AND team_id = ?", userID, teamID).
+	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).
 		First(&currentRoster).Error; err != nil {
+		logger.Info("User not in team roster", "userId", userID, "teamId", teamID, "error", err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "you are not a member of this team"})
 		return
 	}
-	// if currentRoster.User.Role != models.RoleManager {
-	// 	c.JSON(http.StatusForbidden, gin.H{"error": "only managers can remove members"})
-	// 	return
-	// }
 
-	// 4. Kiểm tra user mục tiêu có trong đội (và lấy thông tin role) (eager load User)
+	// 4. Kiểm tra quyền của user hiện tại
+	if client.UserType(userRole) != client.UserTypeManager {
+		logger.Info("Unauthorized access", "userId", userID, "role", userRole)
+		c.JSON(http.StatusForbidden, gin.H{"error": "only managers can remove members"})
+		return
+	}
+
+	// 5. Kiểm tra user mục tiêu có trong đội
 	var targetRoster models.Roster
-	if err := database.DB.Preload("User").
-		Where("user_id = ? AND team_id = ?", memberID, teamID).
+	if err := database.DB.Where("user_id = ? AND team_id = ?", memberID, teamID).
 		First(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "target user is not in the team"})
 		return
 	}
-	// if targetRoster.User.Role == models.RoleManager {
-	// 	c.JSON(http.StatusForbidden, gin.H{"error": "use the managers endpoint to remove managers"})
-	// 	return
-	// }
 
-	// 5. Xóa khỏi roster
+	// 6. Xóa khỏi roster
 	if err := database.DB.Delete(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove member"})
 		return
@@ -328,11 +334,7 @@ func RemoveMemberFromTeam(c *gin.Context) {
 // @Router /teams/{teamId}/managers [post]
 func AddManagerToTeam(c *gin.Context) {
 	// 1. Xác thực user
-	userID, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	userID, _ := middleware.GetUserInfoFromGin(c)
 
 	// 2. Lấy teamID
 	teamID := c.Param("teamId")
@@ -351,18 +353,21 @@ func AddManagerToTeam(c *gin.Context) {
 		return
 	}
 
-	// 5. Kiểm tra user cần thêm tồn tại và là manager
-	var managerToAdd models.User
-	if err := database.DB.First(&managerToAdd, "id = ?", input.UserID).Error; err != nil {
+	// 5. Khởi tạo GraphQL client
+	userClient := client.NewGraphQLClient(config.GetConfig().UserServiceEndpoint)
+
+	// 6. Kiểm tra user cần thêm tồn tại và là manager
+	managerToAdd, err := userClient.GetUser(input.UserID)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user to add not found"})
 		return
 	}
-	if managerToAdd.Role != models.RoleManager {
+	if managerToAdd.Role != client.UserTypeManager {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user must be a manager to be added as team manager"})
 		return
 	}
 
-	// 6. Kiểm tra user hiện tại là leader của team
+	// 7. Kiểm tra user hiện tại là leader của team
 	var currentRoster models.Roster
 	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).First(&currentRoster).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "current user is not in team roster"})
@@ -373,14 +378,14 @@ func AddManagerToTeam(c *gin.Context) {
 		return
 	}
 
-	// 7. Kiểm tra user đã tồn tại trong team chưa
+	// 8. Kiểm tra user đã tồn tại trong team chưa
 	var existingRoster models.Roster
 	if err := database.DB.Where("user_id = ? AND team_id = ?", input.UserID, teamID).First(&existingRoster).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user already in the team"})
 		return
 	}
 
-	// 8. Thêm manager mới (không phải leader)
+	// 9. Thêm manager mới (không phải leader)
 	newManager := models.Roster{UserID: input.UserID, TeamID: teamID, IsLeader: false}
 	if err := database.DB.Create(&newManager).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add manager to team"})
@@ -405,11 +410,7 @@ func AddManagerToTeam(c *gin.Context) {
 // @Router /teams/{teamId}/managers/{managerId} [delete]
 func RemoveManagerFromTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
-	userID, err := middleware.GetUserIDFromGin(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
+	userID, _ := middleware.GetUserInfoFromGin(c)
 
 	// 2. Lấy teamID và managerID từ URL
 	teamID := c.Param("teamId")
@@ -426,19 +427,15 @@ func RemoveManagerFromTeam(c *gin.Context) {
 		return
 	}
 
-	// 4. Kiểm tra manager mục tiêu có trong team (và lấy thông tin role, isLeader)
+	// 4. Kiểm tra manager mục tiêu có trong team
 	var targetRoster models.Roster
-	if err := database.DB.Preload("User").
-		Where("user_id = ? AND team_id = ?", managerID, teamID).
+	if err := database.DB.Where("user_id = ? AND team_id = ?", managerID, teamID).
 		First(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "target user is not in the team"})
 		return
 	}
-	// 5. Kiểm tra target là manager và không phải leader
-	// if targetRoster.User.Role != models.RoleManager {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "target user is not a manager"})
-	// 	return
-	// }
+
+	// 5. Kiểm tra target không phải leader
 	if targetRoster.IsLeader {
 		c.JSON(http.StatusForbidden, gin.H{"error": "cannot remove team leader"})
 		return

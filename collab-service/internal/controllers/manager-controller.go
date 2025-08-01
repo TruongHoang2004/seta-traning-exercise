@@ -21,11 +21,8 @@ import (
 // @Router /teams/{teamId}/assets [get]
 func GetTeamAssets(c *gin.Context) {
 	teamID := c.Param("teamId")
-	userID, err := middleware.GetUserIDFromGin(c) // middleware sets authenticated user
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
+	userID, _ := middleware.GetUserInfoFromGin(c) // middleware sets authenticated user
+
 	db := database.DB
 
 	if !isManagerOfTeam(userID, teamID) {
@@ -68,11 +65,7 @@ func GetTeamAssets(c *gin.Context) {
 // @Router /users/{userId}/assets [get]
 func GetUserAssets(c *gin.Context) {
 	userID := c.Param("userId")
-	authUserID, err := middleware.GetUserIDFromGin(c) // middleware sets authenticated user
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
+	authUserID, _ := middleware.GetUserInfoFromGin(c) // middleware sets authenticated user
 
 	db := database.DB
 

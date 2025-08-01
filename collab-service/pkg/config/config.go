@@ -9,15 +9,16 @@ import (
 
 // Config holds all configuration from .env
 type Config struct {
-	Port             string
-	Production       bool
-	DBHost           string
-	DBUser           string
-	DBPassword       string
-	DBName           string
-	DBPort           string
-	JWTAccessSecret  string
-	JWTRefreshSecret string
+	Port                string
+	Production          bool
+	DBHost              string
+	DBUser              string
+	DBPassword          string
+	DBName              string
+	DBPort              string
+	JWTAccessSecret     string
+	JWTRefreshSecret    string
+	UserServiceEndpoint string
 }
 
 // LoadEnv loads environment variables from .env file
@@ -35,15 +36,16 @@ func LoadEnv() error {
 // GetConfig returns a Config struct populated with values from environment
 func GetConfig() Config {
 	return Config{
-		Port:             GetEnv("PORT", "8080"),
-		Production:       GetEnv("GO_ENV", "development") == "production",
-		DBHost:           GetEnv("DB_HOST", "localhost"),
-		DBUser:           GetEnv("DB_USER", "postgres"),
-		DBPassword:       GetEnv("DB_PASSWORD", ""),
-		DBName:           GetEnv("DB_NAME", "seta"),
-		DBPort:           GetEnv("DB_PORT", "5432"),
-		JWTAccessSecret:  GetEnv("JWT_ACCESS_SECRET", ""),
-		JWTRefreshSecret: GetEnv("JWT_REFRESH_SECRET", ""),
+		Port:                GetEnv("PORT", "8080"),
+		Production:          GetEnv("GO_ENV", "development") == "production",
+		DBHost:              GetEnv("DB_HOST", "localhost"),
+		DBUser:              GetEnv("DB_USER", "postgres"),
+		DBPassword:          GetEnv("DB_PASSWORD", ""),
+		DBName:              GetEnv("DB_NAME", "seta"),
+		DBPort:              GetEnv("DB_PORT", "5432"),
+		JWTAccessSecret:     GetEnv("JWT_ACCESS_SECRET", ""),
+		JWTRefreshSecret:    GetEnv("JWT_REFRESH_SECRET", ""),
+		UserServiceEndpoint: GetEnv("USER_SERVICE_ENDPOINT", "http://localhost:8081/graphql"),
 	}
 }
 

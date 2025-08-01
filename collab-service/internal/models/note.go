@@ -11,3 +11,7 @@ type Note struct {
 
 	OwnerID string `gorm:"type:uuid;not null"`
 }
+
+func (Note) TableName() string {
+	return "notes"
+}

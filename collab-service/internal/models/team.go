@@ -5,3 +5,7 @@ type Team struct {
 	TeamName string
 	Rosters  []Roster `gorm:"foreignKey:TeamID"`
 }
+
+func (Team) TableName() string {
+	return "teams"
+}
