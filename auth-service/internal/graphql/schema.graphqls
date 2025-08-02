@@ -61,7 +61,7 @@ type AuthMutationResponse implements MutationResponse {
 }
 
 type Query {
-  users(role: UserType!): [User!]!
+  users(role: UserType, userIds: [ID!]): [User!]!
   user(userId: ID!): User
   parseToken(accessToken: String!): User
 }

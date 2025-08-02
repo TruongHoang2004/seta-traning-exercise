@@ -28,10 +28,27 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 		resp := respHandler(ctx)
 		latency := time.Since(start)
 
+		hasSystemError := false
+		hasUserError := false
+
+		for _, err := range resp.Errors {
+			if code, ok := err.Extensions["code"].(string); ok {
+				switch code {
+				case "INTERNAL_SERVER_ERROR", "DATABASE_ERROR", "PANIC":
+					hasSystemError = true
+				case "BAD_USER_INPUT", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND":
+					hasUserError = true
+				}
+			} else {
+				// Nếu không có extensions.code => xem như lỗi hệ thống
+				hasSystemError = true
+			}
+		}
+
 		fields := []any{
 			"operation", rc.OperationName,
 			"operationType", string(rc.Operation.Operation),
-			"latency", latency,
+			"latency", latency.String(),
 			"variables", rc.Variables,
 			"errorCount", len(resp.Errors),
 		}
@@ -40,7 +57,17 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 			fields = append(fields, "errors", resp.Errors)
 		}
 
-		logger.Info("GraphQL request processed", fields...)
+		switch {
+		case hasSystemError:
+			fields = append(fields, "status", "system_error")
+			logger.Error("GraphQL system error", fields...)
+		case hasUserError:
+			fields = append(fields, "status", "user_error")
+			logger.Warn("GraphQL user error", fields...)
+		default:
+			fields = append(fields, "status", "success")
+			logger.Info("GraphQL request success", fields...)
+		}
 
 		return resp
 	}

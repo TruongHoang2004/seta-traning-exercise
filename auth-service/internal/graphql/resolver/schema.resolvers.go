@@ -231,9 +231,22 @@ func (r *mutationResolver) RenewToken(ctx context.Context, refreshToken string) 
 }
 
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context, role model.UserType) ([]*model.User, error) {
+func (r *queryResolver) Users(ctx context.Context, role *model.UserType, userIds []string) ([]*model.User, error) {
 	var users []models.User
 	query := database.DB.Model(&models.User{})
+
+	// Apply filters based on parameters
+	// Build the query based on filters
+	if role != nil && len(userIds) > 0 {
+		// Find users that match EITHER the role OR have IDs in the userIds list
+		query = query.Where("role = ? OR id IN ?", *role, userIds)
+	} else if role != nil {
+		// Filter by role only
+		query = query.Where("role = ?", *role)
+	} else if len(userIds) > 0 {
+		// Filter by user IDs only
+		query = query.Where("id IN ?", userIds)
+	}
 
 	if err := query.Find(&users).Error; err != nil {
 		logger.Error("Failed to fetch users", err)

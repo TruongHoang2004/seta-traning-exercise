@@ -76,7 +76,7 @@ type ComplexityRoot struct {
 	Query struct {
 		ParseToken func(childComplexity int, accessToken string) int
 		User       func(childComplexity int, userID string) int
-		Users      func(childComplexity int, role model.UserType) int
+		Users      func(childComplexity int, role *model.UserType, userIds []string) int
 	}
 
 	User struct {
@@ -103,7 +103,7 @@ type MutationResolver interface {
 	RenewToken(ctx context.Context, refreshToken string) (*model.AuthMutationResponse, error)
 }
 type QueryResolver interface {
-	Users(ctx context.Context, role model.UserType) ([]*model.User, error)
+	Users(ctx context.Context, role *model.UserType, userIds []string) ([]*model.User, error)
 	User(ctx context.Context, userID string) (*model.User, error)
 	ParseToken(ctx context.Context, accessToken string) (*model.User, error)
 }
@@ -286,7 +286,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Users(childComplexity, args["role"].(model.UserType)), true
+		return e.complexity.Query.Users(childComplexity, args["role"].(*model.UserType), args["userIds"].([]string)), true
 
 	case "User.createdAt":
 		if e.complexity.User.CreatedAt == nil {
@@ -528,7 +528,7 @@ type AuthMutationResponse implements MutationResponse {
 }
 
 type Query {
-  users(role: UserType!): [User!]!
+  users(role: UserType, userIds: [ID!]): [User!]!
   user(userId: ID!): User
   parseToken(accessToken: String!): User
 }
@@ -641,11 +641,16 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "role", ec.unmarshalNUserType2userᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserType)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "role", ec.unmarshalOUserType2ᚖuserᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserType)
 	if err != nil {
 		return nil, err
 	}
 	args["role"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userIds", ec.unmarshalOID2ᚕstringᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["userIds"] = arg1
 	return args, nil
 }
 
@@ -1475,7 +1480,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Users(rctx, fc.Args["role"].(model.UserType))
+		return ec.resolvers.Query().Users(rctx, fc.Args["role"].(*model.UserType), fc.Args["userIds"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5508,6 +5513,42 @@ func (ec *executionContext) marshalODateTime2ᚖstring(ctx context.Context, sel 
 	return res
 }
 
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v any) ([]*string, error) {
 	if v == nil {
 		return nil, nil
@@ -5561,6 +5602,22 @@ func (ec *executionContext) marshalOUser2ᚖuserᚑserviceᚋinternalᚋgraphql�
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUserType2ᚖuserᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserType(ctx context.Context, v any) (*model.UserType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.UserType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOUserType2ᚖuserᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserType(ctx context.Context, sel ast.SelectionSet, v *model.UserType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {
