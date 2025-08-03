@@ -19,6 +19,7 @@ type Config struct {
 	JWTAccessSecret     string
 	JWTRefreshSecret    string
 	UserServiceEndpoint string
+	LogFilePath         string
 }
 
 // LoadEnv loads environment variables from .env file
@@ -46,6 +47,7 @@ func GetConfig() Config {
 		JWTAccessSecret:     GetEnv("JWT_ACCESS_SECRET", ""),
 		JWTRefreshSecret:    GetEnv("JWT_REFRESH_SECRET", ""),
 		UserServiceEndpoint: GetEnv("USER_SERVICE_ENDPOINT", "http://localhost:8081/graphql"),
+		LogFilePath:         GetEnv("LOG_FILE_PATH", "./logs/collab_service.log"),
 	}
 }
 

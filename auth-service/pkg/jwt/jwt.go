@@ -2,15 +2,31 @@ package jwt
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 	"time"
+	"user-service/pkg/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
-	accessSecret  = []byte("your_access_secret_key")  // Nên lưu trong biến môi trường
-	refreshSecret = []byte("your_refresh_secret_key") // Nên lưu trong biến môi trường
+	accessSecret  = []byte(config.GetConfig().JWTAccessSecret)  // Nên lưu trong biến môi trường
+	refreshSecret = []byte(config.GetConfig().JWTRefreshSecret) // Nên lưu trong biến môi trường
 )
+
+func getExpirationDuration(expiration string) (time.Duration, error) {
+	if strings.HasSuffix(expiration, "d") {
+		daysStr := strings.TrimSuffix(expiration, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return 0, errors.New("invalid day duration format")
+		}
+		return time.Hour * 24 * time.Duration(days), nil
+	}
+	// fallback for standard durations like "15m", "2h45m", etc.
+	return time.ParseDuration(expiration)
+}
 
 type CustomClaims struct {
 	UserID string `json:"user_id"`
@@ -18,10 +34,14 @@ type CustomClaims struct {
 }
 
 func CreateAccessToken(userID string) (string, error) {
+	accessExpiration, err := getExpirationDuration(config.GetConfig().JWTAccessExpiration)
+	if err != nil {
+		return "", err
+	}
 	claims := CustomClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessExpiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "your-app",
 		},
@@ -32,10 +52,14 @@ func CreateAccessToken(userID string) (string, error) {
 }
 
 func CreateRefreshToken(userID string) (string, error) {
+	refreshExpiration, err := getExpirationDuration(config.GetConfig().JWTRefreshExpiration)
+	if err != nil {
+		return "", err
+	}
 	claims := CustomClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshExpiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "your-app",
 		},

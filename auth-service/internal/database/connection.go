@@ -38,6 +38,7 @@ func Connect() {
 	DB, dbErr = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if dbErr != nil {
 		logger.Error("Failed to connect to database", dbErr)
+		os.Exit(1)
 	}
 
 	// Get the underlying SQL DB object

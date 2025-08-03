@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"user-service/internal/database"
 	"user-service/internal/graphql"
 	"user-service/internal/graphql/generated"
 	"user-service/internal/graphql/resolver"
+	"user-service/pkg/config"
 	logger "user-service/pkg/logger"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -20,18 +20,13 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-const defaultPort = "4000"
-
 func main() {
 	// Initialize logger
-	logger.Init(false, "logs/auth_service.log", zerolog.DebugLevel)
+	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
 	database.Connect()
 	defer database.Close()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
+	port := config.GetConfig().Port
 
 	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{Validate: validator.New()}}))
 

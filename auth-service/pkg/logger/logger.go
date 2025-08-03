@@ -3,6 +3,7 @@ package logger
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -17,6 +18,12 @@ var (
 // Init initializes the zerolog logger with both file and console outputs.
 func Init(isProduction bool, logFilePath string, level zerolog.Level) {
 	initOnce.Do(func() {
+		// ✅ Tạo thư mục cha nếu chưa tồn tại
+		dir := filepath.Dir(logFilePath)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			panic("Failed to create log directory: " + err.Error())
+		}
+
 		file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			panic("Failed to open log file: " + err.Error())
@@ -27,11 +34,9 @@ func Init(isProduction bool, logFilePath string, level zerolog.Level) {
 		writers = append(writers, logFile)
 
 		if isProduction {
-			// In production, log as JSON
 			writers = append(writers, os.Stdout)
 			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 		} else {
-			// Pretty print for development
 			consoleWriter := zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
 				w.Out = os.Stdout
 				w.TimeFormat = "2006-01-02 15:04:05"

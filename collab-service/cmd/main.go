@@ -5,7 +5,6 @@ import (
 	"collab-service/internal/routes"
 	"collab-service/pkg/config"
 	"collab-service/pkg/logger"
-	"os"
 
 	"github.com/rs/zerolog"
 	// Chỉnh đúng path nếu cần
@@ -27,7 +26,7 @@ func main() {
 	config.LoadEnv()
 
 	// Init logger
-	logger.Init(false, "logs/server.log", zerolog.DebugLevel)
+	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
 	defer logger.Close()
 
 	// Connect to database
@@ -38,10 +37,8 @@ func main() {
 	router := routes.SetupRoutes()
 
 	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := config.GetConfig().Port
+
 	logger.Info("Server starting on port " + port)
 	logger.Info("Swagger at http://localhost:" + port + "/swagger/index.html")
 
