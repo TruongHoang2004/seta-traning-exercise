@@ -407,6 +407,49 @@
                 }
             }
         },
+        "/import-users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Import users concurrently using GraphQL mutation and worker pool",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Import users from CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ImportUserSummary"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/notes": {
             "get": {
                 "security": [
@@ -1369,6 +1412,40 @@
             "properties": {
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ImportUserResult": {
+            "type": "object",
+            "properties": {
+                "line": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.ImportUserSummary": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ImportUserResult"
+                    }
+                },
+                "success": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },

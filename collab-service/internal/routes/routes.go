@@ -4,6 +4,7 @@ import (
 	"collab-service/internal/controllers"
 	"collab-service/internal/docs"
 	"collab-service/internal/middleware"
+	"collab-service/pkg/client"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -28,6 +29,9 @@ func SetupRoutes() *gin.Engine {
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware()) // JWT Auth
 		{
+			// User import
+			protected.POST("/import-users", controllers.ImportUsersHandler).Use(middleware.RoleMiddleware(client.UserTypeManager))
+
 			// Team management
 			protected.POST("/teams", controllers.CreateTeam)
 			protected.POST("/teams/:teamId/members", controllers.AddMemberToTeam)

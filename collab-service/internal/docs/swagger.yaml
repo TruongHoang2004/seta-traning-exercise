@@ -48,6 +48,28 @@ definitions:
     required:
     - name
     type: object
+  dto.ImportUserResult:
+    properties:
+      line:
+        type: integer
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dto.ImportUserSummary:
+    properties:
+      failed:
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/dto.ImportUserResult'
+        type: array
+      success:
+        type: integer
+      total:
+        type: integer
+    type: object
   dto.ManagerInput:
     properties:
       managerId:
@@ -388,6 +410,33 @@ paths:
       summary: Revoke shared folder access
       tags:
       - folders
+  /import-users:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Import users concurrently using GraphQL mutation and worker pool
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ImportUserSummary'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import users from CSV
+      tags:
+      - users
   /notes:
     get:
       produces:
