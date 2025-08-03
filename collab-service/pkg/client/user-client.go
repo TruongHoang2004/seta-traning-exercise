@@ -80,9 +80,9 @@ func (c *GraphQLClient) doRequest(req *graphql.Request, respData interface{}) er
 	return c.client.Run(ctx, req, respData)
 }
 
-func (c *GraphQLClient) GetUsers(role UserType) ([]User, error) {
-	query := `query GetUsers($role: UserType!) {
-		users(role: $role) {
+func (c *GraphQLClient) GetUsers(role *UserType, userIDs []string) ([]User, error) {
+	query := `query GetUsers($role: UserType, $userIds: [ID!]) {
+		users(role: $role, userIds: $userIds) {
 			userId
 			username
 			email
@@ -92,7 +92,14 @@ func (c *GraphQLClient) GetUsers(role UserType) ([]User, error) {
 	}`
 
 	req := graphql.NewRequest(query)
-	req.Var("role", role)
+
+	// Only add variables if they're provided
+	if role != nil {
+		req.Var("role", *role)
+	}
+	if len(userIDs) > 0 {
+		req.Var("userIds", userIDs)
+	}
 
 	var resp struct {
 		Users []User `json:"users"`

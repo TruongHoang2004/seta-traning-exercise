@@ -16,6 +16,38 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/folders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all folders owned by the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Get all folders",
+                "responses": {
+                    "200": {
+                        "description": "List of folders",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Folder"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -238,6 +270,11 @@ const docTemplate = `{
         },
         "/folders/{folderId}/share": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Share a folder with another user with read or write access",
                 "consumes": [
                     "application/json"
@@ -315,6 +352,11 @@ const docTemplate = `{
         },
         "/folders/{folderId}/share/{userId}": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Remove a user's access to a shared folder",
                 "produces": [
                     "application/json"
@@ -372,6 +414,43 @@ const docTemplate = `{
             }
         },
         "/notes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notes"
+                ],
+                "summary": "Get all notes",
+                "responses": {
+                    "200": {
+                        "description": "List of notes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Note"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -396,7 +475,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.NoteDTO"
+                            "$ref": "#/definitions/dto.CreateNoteDTO"
                         }
                     }
                 ],
@@ -508,7 +587,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.NoteDTO"
+                            "$ref": "#/definitions/dto.UpdateNoteDTO"
                         }
                     }
                 ],
@@ -597,6 +676,11 @@ const docTemplate = `{
         },
         "/notes/{noteId}/share": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Share a single note with read or write access",
                 "consumes": [
                     "application/json"
@@ -660,6 +744,11 @@ const docTemplate = `{
         },
         "/notes/{noteId}/share/{userId}": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Remove a user's access to a shared note",
                 "produces": [
                     "application/json"
@@ -1237,6 +1326,24 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateNoteDTO": {
+            "type": "object",
+            "required": [
+                "folder_id",
+                "title"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "folder_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateTeamInput": {
             "type": "object",
             "required": [
@@ -1301,25 +1408,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.NoteDTO": {
-            "type": "object",
-            "required": [
-                "body",
-                "folder_id",
-                "title"
-            ],
-            "properties": {
-                "body": {
-                    "type": "string"
-                },
-                "folder_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.ShareDTO": {
             "type": "object",
             "required": [
@@ -1331,6 +1419,20 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.AccessRole"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateNoteDTO": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "folder_id": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
             }

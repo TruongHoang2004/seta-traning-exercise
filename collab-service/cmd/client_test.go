@@ -38,7 +38,8 @@ func TestGetUsers(t *testing.T) {
 	defer ts.Close()
 
 	gqlClient := client.NewGraphQLClient(ts.URL)
-	users, err := gqlClient.GetUsers(client.UserTypeManager)
+	userType := client.UserTypeManager
+	users, err := gqlClient.GetUsers(&userType, nil)
 
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)

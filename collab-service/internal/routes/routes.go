@@ -38,11 +38,13 @@ func SetupRoutes() *gin.Engine {
 			// Folder management
 			protected.POST("/folders", controllers.CreateFolder)
 			protected.GET("/folders/:folderId", controllers.GetFolder)
+			protected.GET("/folders", controllers.GetFolders)
 			protected.PUT("/folders/:folderId", controllers.UpdateFolder)
 			protected.DELETE("/folders/:folderId", controllers.DeleteFolder)
 
 			// Note management
 			protected.POST("/notes", controllers.CreateNote)
+			protected.GET("/notes", controllers.GetNotes)
 			protected.GET("/notes/:noteId", controllers.GetNote)
 			protected.PUT("/notes/:noteId", controllers.UpdateNote)
 			protected.DELETE("/notes/:noteId", controllers.DeleteNote)
@@ -54,8 +56,12 @@ func SetupRoutes() *gin.Engine {
 			protected.DELETE("/notes/:noteId/share/:userId", controllers.RevokeNoteShare)
 
 			// Manager-only APIs
-			protected.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
-			protected.GET("/users/:userId/assets", controllers.GetUserAssets)
+			managerOnly := protected.Group("/")
+			managerOnly.Use(middleware.RoleMiddleware("manager"))
+			{
+				managerOnly.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
+				managerOnly.GET("/users/:userId/assets", controllers.GetUserAssets)
+			}
 		}
 	}
 

@@ -114,6 +114,57 @@ func GetFolder(c *gin.Context) {
 	c.JSON(http.StatusOK, folder.Folder)
 }
 
+// GetFolders retrieves all folders for the authenticated user
+// @Security BearerAuth
+// @Summary Get all folders
+// @Description Retrieve all folders owned by the authenticated user
+// @Tags folders
+// @Produce json
+// @Success 200 {array} models.Folder "List of folders"
+// @Failure 401 {object} object "Unauthorized"
+// @Router /folders [get]
+func GetFolders(c *gin.Context) {
+	userId, _ := middleware.GetUserInfoFromGin(c)
+
+	type FolderWithAccess struct {
+		models.Folder
+		Access string `json:"access"`
+	}
+
+	var ownedFolders []models.Folder
+	var sharedFolders []FolderWithAccess
+	var allFolders []FolderWithAccess
+
+	// Get owned folders
+	if err := database.DB.Where("owner_id = ?", userId).Find(&ownedFolders).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve owned folders"})
+		return
+	}
+
+	// Get shared folders
+	if err := database.DB.Table("folders").
+		Select("folders.*, folder_shares.access").
+		Joins("INNER JOIN folder_shares ON folders.id = folder_shares.folder_id").
+		Where("folder_shares.user_id = ?", userId).
+		Scan(&sharedFolders).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve shared folders"})
+		return
+	}
+
+	// Convert owned folders to FolderWithAccess and mark them as "owner"
+	for _, folder := range ownedFolders {
+		allFolders = append(allFolders, FolderWithAccess{
+			Folder: folder,
+			Access: "OWNER",
+		})
+	}
+
+	// Add shared folders
+	allFolders = append(allFolders, sharedFolders...)
+
+	c.JSON(http.StatusOK, allFolders)
+}
+
 // UpdateFolder updates a folder's name and metadata
 // @Security BearerAuth
 // @Summary Update folder
