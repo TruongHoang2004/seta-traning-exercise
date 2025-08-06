@@ -85,7 +85,7 @@ Wait until all services (PostgreSQL, auth-service, collab-service, Loki, Promtai
 
 ### 📜 Promtail Configuration
 
-**Promtail reads logs from the following mounted files:
+Promtail reads logs from the following mounted files:
 
 - `auth-service/logs/auth_service.log`
 - `collab-service/logs/server.log`
@@ -119,19 +119,6 @@ docker exec -it <container_name> env
 ```
 
 Access container shell:
-
-```bash
-docker exec -it <container_name> sh
-```
-
-```bash
-docker exec -it <container_name> env
-```
-
-Access container shell:
-```bash
-docker exec -it <container_name> sh
-```
 
 ```bash
 docker exec -it <container_name> sh
