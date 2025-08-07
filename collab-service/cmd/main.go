@@ -23,7 +23,7 @@ import (
 
 func main() {
 	// Load environment variables
-	config.LoadEnv()
+	// config.LoadEnv()
 
 	// Init logger
 	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
