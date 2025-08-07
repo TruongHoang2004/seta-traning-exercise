@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 	"user-service/internal/models"
+	"user-service/pkg/config"
 	"user-service/pkg/logger"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -15,18 +15,13 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	// Load file .env
-	err := godotenv.Load()
-	if err != nil {
-		logger.Error("Error loading .env file", err)
-	}
 
 	// Lấy thông tin từ biến môi trường
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
+	host := config.GetConfig().DBHost
+	user := config.GetConfig().DBUser
+	password := config.GetConfig().DBPassword
+	dbname := config.GetConfig().DBName
+	port := config.GetConfig().DBPort
 
 	log.Printf("Connecting to database: %s on %s:%s", dbname, host, port)
 
