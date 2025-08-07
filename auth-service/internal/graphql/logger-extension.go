@@ -40,16 +40,28 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 					hasUserError = true
 				}
 			} else {
-				// Nếu không có extensions.code => xem như lỗi hệ thống
 				hasSystemError = true
 			}
 		}
+
+		// List of sensitive keys to redact
+		sensitiveKeys := map[string]struct{}{
+			"password":        {},
+			"newPassword":     {},
+			"currentPassword": {},
+			"confirmPassword": {},
+			"token":           {},
+			"accessToken":     {},
+			"refreshToken":    {},
+		}
+
+		filteredVars := sanitizeVariables(rc.Variables, sensitiveKeys)
 
 		fields := []any{
 			"operation", rc.OperationName,
 			"operationType", string(rc.Operation.Operation),
 			"latency", latency.String(),
-			"variables", rc.Variables,
+			"variables", filteredVars,
 			"errorCount", len(resp.Errors),
 		}
 
@@ -71,4 +83,24 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 
 		return resp
 	}
+}
+
+func sanitizeVariables(vars map[string]interface{}, sensitiveKeys map[string]struct{}) map[string]interface{} {
+	safe := make(map[string]interface{}, len(vars))
+
+	for k, v := range vars {
+		if _, sensitive := sensitiveKeys[k]; sensitive {
+			safe[k] = "[REDACTED]"
+			continue
+		}
+
+		// Nếu là map lồng, gọi đệ quy
+		if nestedMap, ok := v.(map[string]interface{}); ok {
+			safe[k] = sanitizeVariables(nestedMap, sensitiveKeys)
+		} else {
+			safe[k] = v
+		}
+	}
+
+	return safe
 }
