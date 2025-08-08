@@ -4,10 +4,9 @@ import (
 	"fmt"
 	//  use zap log for better performance
 	"collab-service/internal/models"
+	"collab-service/pkg/config"
 	"log"
-	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -15,18 +14,11 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	// Load file .env
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	// Lấy thông tin từ biến môi trường
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
+	host := config.GetConfig().DBHost
+	user := config.GetConfig().DBUser
+	password := config.GetConfig().DBPassword
+	dbname := config.GetConfig().DBName
+	port := config.GetConfig().DBPort
 
 	log.Printf("Connecting to database: %s on %s:%s", dbname, host, port)
 

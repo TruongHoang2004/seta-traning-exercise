@@ -4,6 +4,7 @@ import (
 	"collab-service/internal/controllers"
 	"collab-service/internal/docs"
 	"collab-service/internal/middleware"
+	"collab-service/pkg/client"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -26,8 +27,11 @@ func SetupRoutes() *gin.Engine {
 	{
 		// Protected routes
 		protected := api.Group("/")
-		// protected.Use(middleware.AuthMiddleware()) // JWT Auth
+		protected.Use(middleware.AuthMiddleware()) // JWT Auth
 		{
+			// User import
+			protected.POST("/import-users", controllers.ImportUsersHandler).Use(middleware.RoleMiddleware(client.UserTypeManager))
+
 			// Team management
 			protected.POST("/teams", controllers.CreateTeam)
 			protected.POST("/teams/:teamId/members", controllers.AddMemberToTeam)
@@ -38,11 +42,13 @@ func SetupRoutes() *gin.Engine {
 			// Folder management
 			protected.POST("/folders", controllers.CreateFolder)
 			protected.GET("/folders/:folderId", controllers.GetFolder)
+			protected.GET("/folders", controllers.GetFolders)
 			protected.PUT("/folders/:folderId", controllers.UpdateFolder)
 			protected.DELETE("/folders/:folderId", controllers.DeleteFolder)
 
 			// Note management
 			protected.POST("/notes", controllers.CreateNote)
+			protected.GET("/notes", controllers.GetNotes)
 			protected.GET("/notes/:noteId", controllers.GetNote)
 			protected.PUT("/notes/:noteId", controllers.UpdateNote)
 			protected.DELETE("/notes/:noteId", controllers.DeleteNote)
@@ -54,8 +60,12 @@ func SetupRoutes() *gin.Engine {
 			protected.DELETE("/notes/:noteId/share/:userId", controllers.RevokeNoteShare)
 
 			// Manager-only APIs
-			protected.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
-			protected.GET("/users/:userId/assets", controllers.GetUserAssets)
+			managerOnly := protected.Group("/")
+			managerOnly.Use(middleware.RoleMiddleware("manager"))
+			{
+				managerOnly.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
+				managerOnly.GET("/users/:userId/assets", controllers.GetUserAssets)
+			}
 		}
 	}
 

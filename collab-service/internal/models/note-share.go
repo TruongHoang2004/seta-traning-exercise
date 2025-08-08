@@ -7,3 +7,7 @@ type NoteShare struct {
 
 	Access AccessRole
 }
+
+func (NoteShare) TableName() string {
+	return "note_shares"
+}

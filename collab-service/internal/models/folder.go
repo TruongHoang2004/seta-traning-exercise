@@ -8,3 +8,7 @@ type Folder struct {
 
 	Notes []Note `gorm:"foreignKey:FolderID;references:ID"`
 }
+
+func (Folder) TableName() string {
+	return "folders"
+}

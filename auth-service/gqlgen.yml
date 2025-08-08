@@ -1,6 +1,6 @@
 # gqlgen.yml
 schema:
-  - internal/graph/schema.graphqls
+  - internal/graphql/schema.graphqls
 
 exec:
   filename: internal/graphql/generated/generated.go

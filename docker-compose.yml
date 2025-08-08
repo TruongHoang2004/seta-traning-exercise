@@ -1,0 +1,99 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: truonghoang2004
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    environment:
+      PORT: 4000
+      GO_ENV: development
+      DB_HOST: postgres
+      DB_USER: postgres
+      DB_PASSWORD: truonghoang2004
+      DB_NAME: user_service
+      DB_PORT: 5432
+      JWT_ACCESS_SECRET: seta
+      JWT_ACCESS_EXPIRATION: 15m
+      JWT_REFRESH_SECRET: seta
+      JWT_REFRESH_EXPIRATION: 7d
+      LOG_FILE_PATH: ./logs/auth_service.log
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./auth-service/logs:/app/logs
+    ports:
+      - "4000:4000"
+
+  collab-service:
+    build:
+      context: ./collab-service
+    container_name: collab-service
+    environment:
+      PORT: 8080
+      GO_ENV: development
+      DB_HOST: postgres
+      DB_USER: postgres
+      DB_PASSWORD: truonghoang2004
+      DB_NAME: collab_service
+      DB_PORT: 5432
+      USER_SERVICE_ENDPOINT: http://auth-service:4000/query
+      LOG_FILE_PATH: ./logs/server.log
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    volumes:
+      - ./collab-service/logs:/app/logs
+    ports:
+      - "8080:8080"
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - ./auth-service/logs:/var/log/auth-service
+      - ./collab-service/logs:/var/log/collab-service
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+volumes:
+  pgdata:

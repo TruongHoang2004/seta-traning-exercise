@@ -14,6 +14,18 @@ definitions:
     required:
     - userId
     type: object
+  dto.CreateNoteDTO:
+    properties:
+      body:
+        type: string
+      folder_id:
+        type: string
+      title:
+        type: string
+    required:
+    - folder_id
+    - title
+    type: object
   dto.CreateTeamInput:
     properties:
       managers:
@@ -36,6 +48,28 @@ definitions:
     required:
     - name
     type: object
+  dto.ImportUserResult:
+    properties:
+      line:
+        type: integer
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dto.ImportUserSummary:
+    properties:
+      failed:
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/dto.ImportUserResult'
+        type: array
+      success:
+        type: integer
+      total:
+        type: integer
+    type: object
   dto.ManagerInput:
     properties:
       managerId:
@@ -56,19 +90,6 @@ definitions:
     - memberId
     - memberName
     type: object
-  dto.NoteDTO:
-    properties:
-      body:
-        type: string
-      folder_id:
-        type: string
-      title:
-        type: string
-    required:
-    - body
-    - folder_id
-    - title
-    type: object
   dto.ShareDTO:
     properties:
       accessRole:
@@ -78,6 +99,15 @@ definitions:
     required:
     - accessRole
     - userId
+    type: object
+  dto.UpdateNoteDTO:
+    properties:
+      body:
+        type: string
+      folder_id:
+        type: string
+      title:
+        type: string
     type: object
   models.AccessRole:
     enum:
@@ -97,8 +127,6 @@ definitions:
         items:
           $ref: '#/definitions/models.Note'
         type: array
-      owner:
-        $ref: '#/definitions/models.User'
       ownerID:
         type: string
     type: object
@@ -112,68 +140,11 @@ definitions:
         type: string
       id:
         type: string
-      owner:
-        $ref: '#/definitions/models.User'
       ownerID:
         type: string
       title:
         type: string
     type: object
-  models.Roster:
-    properties:
-      id:
-        type: string
-      isLeader:
-        type: boolean
-      team:
-        $ref: '#/definitions/models.Team'
-      teamID:
-        type: string
-      user:
-        $ref: '#/definitions/models.User'
-      userID:
-        type: string
-    type: object
-  models.Team:
-    properties:
-      id:
-        type: string
-      rosters:
-        items:
-          $ref: '#/definitions/models.Roster'
-        type: array
-      teamName:
-        type: string
-    type: object
-  models.User:
-    properties:
-      email:
-        type: string
-      folders:
-        items:
-          $ref: '#/definitions/models.Folder'
-        type: array
-      id:
-        type: string
-      passwordHash:
-        type: string
-      role:
-        $ref: '#/definitions/models.UserRole'
-      rosters:
-        items:
-          $ref: '#/definitions/models.Roster'
-        type: array
-      username:
-        type: string
-    type: object
-  models.UserRole:
-    enum:
-    - MANAGER
-    - MEMBER
-    type: string
-    x-enum-varnames:
-    - RoleManager
-    - RoleMember
 host: localhost:8080
 info:
   contact: {}
@@ -182,6 +153,26 @@ info:
   version: "1.0"
 paths:
   /folders:
+    get:
+      description: Retrieve all folders owned by the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of folders
+          schema:
+            items:
+              $ref: '#/definitions/models.Folder'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all folders
+      tags:
+      - folders
     post:
       consumes:
       - application/json
@@ -372,6 +363,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Share folder with user
       tags:
       - folders
@@ -412,10 +405,62 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Revoke shared folder access
       tags:
       - folders
+  /import-users:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Import users concurrently using GraphQL mutation and worker pool
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ImportUserSummary'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import users from CSV
+      tags:
+      - users
   /notes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of notes
+          schema:
+            items:
+              $ref: '#/definitions/models.Note'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all notes
+      tags:
+      - notes
     post:
       consumes:
       - application/json
@@ -426,7 +471,7 @@ paths:
         name: note
         required: true
         schema:
-          $ref: '#/definitions/dto.NoteDTO'
+          $ref: '#/definitions/dto.CreateNoteDTO'
       produces:
       - application/json
       responses:
@@ -528,7 +573,7 @@ paths:
         name: note
         required: true
         schema:
-          $ref: '#/definitions/dto.NoteDTO'
+          $ref: '#/definitions/dto.UpdateNoteDTO'
       produces:
       - application/json
       responses:
@@ -597,6 +642,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Share a note with another user
       tags:
       - notes
@@ -637,6 +684,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Revoke note sharing
       tags:
       - notes

@@ -18,30 +18,32 @@ import (
 // @Tags notes
 // @Accept json
 // @Produce json
-// @Param note body dto.NoteDTO true "Note data"
+// @Param note body dto.CreateNoteDTO true "Note data"
 // @Success 201 {object} models.Note "Created note"
 // @Failure 400 {object} object "Bad request"
 // @Failure 401 {object} object "Unauthorized"
 // @Failure 404 {object} object "User not found"
 // @Router /notes [post]
 func CreateNote(c *gin.Context) {
-	var noteDTO dto.NoteDTO
+	var noteDTO dto.CreateNoteDTO
 
 	if err := c.ShouldBindJSON(&noteDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	userId, err := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
+
+	var exists bool
+	err := database.DB.
+		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE id = ? AND owner_id = ?) AS exists", noteDTO.FolderID, userId).
+		Scan(&exists).Error
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking existing folder"})
 		return
 	}
-
-	var user models.User
-	result := database.DB.First(&user, "id = ?", userId)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
 		return
 	}
 
@@ -49,7 +51,7 @@ func CreateNote(c *gin.Context) {
 		Title:    noteDTO.Title,
 		Body:     noteDTO.Body,
 		FolderID: noteDTO.FolderID,
-		OwnerID:  user.ID,
+		OwnerID:  userId,
 	}
 
 	if err := database.DB.Create(&note).Error; err != nil {
@@ -58,6 +60,41 @@ func CreateNote(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, note)
+}
+
+// GetNotes returns all note users have access to
+// @Security BearerAuth
+// @Summary Get all notes
+// @Tags notes
+// @Produce json
+// @Success 200 {array} models.Note "List of notes"
+// @Failure 401 {object} object "Unauthorized"
+// @Failure 403 {object} object "Forbidden"
+// @Router /notes [get]
+func GetNotes(c *gin.Context) {
+	userId, _ := middleware.GetUserInfoFromGin(c)
+
+	type NoteWithAccess struct {
+		models.Note
+		Access *string
+	}
+
+	var notes []NoteWithAccess
+
+	result := database.DB.
+		Table("notes").
+		Select("notes.*, COALESCE(note_shares.access, folder_shares.access) as access").
+		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id AND note_shares.user_id = ?", userId).
+		Joins("LEFT JOIN folders ON notes.folder_id = folders.id").
+		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
+		Where("notes.owner_id = ? OR note_shares.user_id = ? OR folder_shares.user_id = ?", userId, userId, userId).
+		Find(&notes)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve notes"})
+		return
+	}
+	c.JSON(http.StatusOK, notes)
 }
 
 // GetNote returns note details with read permission
@@ -73,7 +110,7 @@ func CreateNote(c *gin.Context) {
 // @Router /notes/{noteId} [get]
 func GetNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	type NoteWithAccess struct {
 		models.Note
@@ -118,7 +155,7 @@ func GetNote(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param noteId path string true "Note ID"
-// @Param note body dto.NoteDTO true "Updated note"
+// @Param note body dto.UpdateNoteDTO true "Updated note"
 // @Success 200 {object} models.Note
 // @Failure 400 {object} object
 // @Failure 401 {object} object
@@ -127,9 +164,9 @@ func GetNote(c *gin.Context) {
 // @Router /notes/{noteId} [put]
 func UpdateNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
-	var noteDTO dto.NoteDTO
+	var noteDTO dto.UpdateNoteDTO
 	if err := c.ShouldBindJSON(&noteDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -137,30 +174,33 @@ func UpdateNote(c *gin.Context) {
 
 	type NoteWithAccess struct {
 		models.Note
-		Access     *string
-		UserExists *string
+		Access *string `json:"access"`
 	}
 
 	var note NoteWithAccess
 
 	result := database.DB.
 		Table("notes").
-		Select("notes.*, note_shares.access as access, users.id as user_exists").
+		Select("notes.*, COALESCE(note_shares.access, folder_shares.access) AS access").
 		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id AND note_shares.user_id = ?", userId).
-		Joins("LEFT JOIN users ON users.id = ?", userId).
-		Where("notes.id = ?", noteId).
+		Joins("LEFT JOIN folders ON notes.folder_id = folders.id").
+		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
+		Where(`
+			notes.id = ?
+			AND (
+				notes.owner_id = ?
+				OR note_shares.note_id IS NOT NULL
+				OR folder_shares.folder_id IS NOT NULL
+			)
+		`, noteId, userId).
 		First(&note)
 
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found or access denied"})
 		return
 	}
 
-	if note.UserExists == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-		return
-	}
-
+	// Kiểm tra quyền chỉnh sửa
 	if note.OwnerID != userId {
 		if note.Access == nil || *note.Access != string(models.AccessLevelWrite) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have WRITE permission on this note"})
@@ -168,10 +208,14 @@ func UpdateNote(c *gin.Context) {
 		}
 	}
 
+	// Cập nhật note
 	note.Title = noteDTO.Title
 	note.Body = noteDTO.Body
 
-	if err := database.DB.Save(&note.Note).Error; err != nil {
+	if err := database.DB.Model(&models.Note{}).Where("id = ?", note.ID).Updates(map[string]interface{}{
+		"title": note.Title,
+		"body":  note.Body,
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update note"})
 		return
 	}
@@ -192,7 +236,7 @@ func UpdateNote(c *gin.Context) {
 // @Router /notes/{noteId} [delete]
 func DeleteNote(c *gin.Context) {
 	noteId := c.Param("noteId")
-	userId, _ := middleware.GetUserIDFromGin(c)
+	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var note models.Note
 	result := database.DB.First(&note, "id = ?", noteId)

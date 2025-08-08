@@ -16,6 +16,38 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/folders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all folders owned by the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Get all folders",
+                "responses": {
+                    "200": {
+                        "description": "List of folders",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Folder"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -238,6 +270,11 @@ const docTemplate = `{
         },
         "/folders/{folderId}/share": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Share a folder with another user with read or write access",
                 "consumes": [
                     "application/json"
@@ -315,6 +352,11 @@ const docTemplate = `{
         },
         "/folders/{folderId}/share/{userId}": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Remove a user's access to a shared folder",
                 "produces": [
                     "application/json"
@@ -371,7 +413,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/import-users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Import users concurrently using GraphQL mutation and worker pool",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Import users from CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ImportUserSummary"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/notes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notes"
+                ],
+                "summary": "Get all notes",
+                "responses": {
+                    "200": {
+                        "description": "List of notes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Note"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -396,7 +518,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.NoteDTO"
+                            "$ref": "#/definitions/dto.CreateNoteDTO"
                         }
                     }
                 ],
@@ -508,7 +630,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.NoteDTO"
+                            "$ref": "#/definitions/dto.UpdateNoteDTO"
                         }
                     }
                 ],
@@ -597,6 +719,11 @@ const docTemplate = `{
         },
         "/notes/{noteId}/share": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Share a single note with read or write access",
                 "consumes": [
                     "application/json"
@@ -660,6 +787,11 @@ const docTemplate = `{
         },
         "/notes/{noteId}/share/{userId}": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Remove a user's access to a shared note",
                 "produces": [
                     "application/json"
@@ -1237,6 +1369,24 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateNoteDTO": {
+            "type": "object",
+            "required": [
+                "folder_id",
+                "title"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "folder_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreateTeamInput": {
             "type": "object",
             "required": [
@@ -1271,6 +1421,40 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ImportUserResult": {
+            "type": "object",
+            "properties": {
+                "line": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.ImportUserSummary": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ImportUserResult"
+                    }
+                },
+                "success": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ManagerInput": {
             "type": "object",
             "required": [
@@ -1301,25 +1485,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.NoteDTO": {
-            "type": "object",
-            "required": [
-                "body",
-                "folder_id",
-                "title"
-            ],
-            "properties": {
-                "body": {
-                    "type": "string"
-                },
-                "folder_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.ShareDTO": {
             "type": "object",
             "required": [
@@ -1331,6 +1496,20 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.AccessRole"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateNoteDTO": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "folder_id": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
             }
@@ -1361,9 +1540,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.Note"
                     }
                 },
-                "owner": {
-                    "$ref": "#/definitions/models.User"
-                },
                 "ownerID": {
                     "type": "string"
                 }
@@ -1384,9 +1560,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "owner": {
-                    "$ref": "#/definitions/models.User"
-                },
                 "ownerID": {
                     "type": "string"
                 },
@@ -1394,89 +1567,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "models.Roster": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "isLeader": {
-                    "type": "boolean"
-                },
-                "team": {
-                    "$ref": "#/definitions/models.Team"
-                },
-                "teamID": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/models.User"
-                },
-                "userID": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Team": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "rosters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Roster"
-                    }
-                },
-                "teamName": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "folders": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Folder"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "passwordHash": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/models.UserRole"
-                },
-                "rosters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Roster"
-                    }
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.UserRole": {
-            "type": "string",
-            "enum": [
-                "MANAGER",
-                "MEMBER"
-            ],
-            "x-enum-varnames": [
-                "RoleManager",
-                "RoleMember"
-            ]
         }
     },
     "securityDefinitions": {
