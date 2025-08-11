@@ -45,6 +45,7 @@ func Connect() {
 	if err != nil {
 		log.Fatal("Failed to get SQL DB object:", err)
 	}
+	// ping connection to ensure it's valid
 
 	// Set connection pool settings
 	sqlDB.SetMaxIdleConns(10)

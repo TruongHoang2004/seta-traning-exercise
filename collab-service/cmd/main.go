@@ -11,6 +11,8 @@ import (
 	// Chỉnh đúng path nếu cần
 )
 
+// good
+
 // @title           Collab Service API
 // @version         1.0
 // @description     API for managing teams, folders, notes, and sharing.
@@ -32,7 +34,7 @@ func main() {
 
 	// Connect to database
 	database.Connect()
-	defer database.Close()
+	defer database.Close() //good
 
 	// Setup API routes
 	router := routes.SetupRoutes()
@@ -45,6 +47,7 @@ func main() {
 	logger.Info("Server starting on port " + port)
 	logger.Info("Swagger at http://localhost:" + port + "/swagger/index.html")
 
+	// add graceful shutdown
 	if err := router.Run(":" + port); err != nil {
 		logger.Error("Failed to start server: " + err.Error())
 	}
