@@ -67,6 +67,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AssignRole func(childComplexity int, userID string, role model.UserType) int
 		CreateUser func(childComplexity int, input model.CreateUserInput) int
 		Login      func(childComplexity int, input model.UserInput) int
 		RenewToken func(childComplexity int, refreshToken string) int
@@ -101,6 +102,7 @@ type MutationResolver interface {
 	UpdateUser(ctx context.Context, userID string, username string, email string) (*model.UserMutationResponse, error)
 	Login(ctx context.Context, input model.UserInput) (*model.AuthMutationResponse, error)
 	RenewToken(ctx context.Context, refreshToken string) (*model.AuthMutationResponse, error)
+	AssignRole(ctx context.Context, userID string, role model.UserType) (*model.UserMutationResponse, error)
 }
 type QueryResolver interface {
 	Users(ctx context.Context, role *model.UserType, userIds []string) ([]*model.User, error)
@@ -203,6 +205,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Member.MemberName(childComplexity), true
+
+	case "Mutation.assignRole":
+		if e.complexity.Mutation.AssignRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_assignRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AssignRole(childComplexity, args["userId"].(string), args["role"].(model.UserType)), true
 
 	case "Mutation.createUser":
 		if e.complexity.Mutation.CreateUser == nil {
@@ -542,6 +556,7 @@ type Mutation {
   ): UserMutationResponse!
   login(input: UserInput!): AuthMutationResponse!
   renewToken(refreshToken: String!): AuthMutationResponse!
+  assignRole(userId: ID!, role: UserType!): UserMutationResponse!
 }
 `, BuiltIn: false},
 }
@@ -550,6 +565,22 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_assignRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "role", ec.unmarshalNUserType2userᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserType)
+	if err != nil {
+		return nil, err
+	}
+	args["role"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -1460,6 +1491,73 @@ func (ec *executionContext) fieldContext_Mutation_renewToken(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_renewToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_assignRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_assignRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AssignRole(rctx, fc.Args["userId"].(string), fc.Args["role"].(model.UserType))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.UserMutationResponse)
+	fc.Result = res
+	return ec.marshalNUserMutationResponse2ᚖuserᚑserviceᚋinternalᚋgraphqlᚋmodelᚐUserMutationResponse(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_assignRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_UserMutationResponse_code(ctx, field)
+			case "success":
+				return ec.fieldContext_UserMutationResponse_success(ctx, field)
+			case "message":
+				return ec.fieldContext_UserMutationResponse_message(ctx, field)
+			case "errors":
+				return ec.fieldContext_UserMutationResponse_errors(ctx, field)
+			case "user":
+				return ec.fieldContext_UserMutationResponse_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserMutationResponse", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_assignRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4484,6 +4582,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "renewToken":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_renewToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assignRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_assignRole(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

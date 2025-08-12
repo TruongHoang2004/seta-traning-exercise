@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 	"net/http"
+	"user-service/config"
 	"user-service/internal/database"
 	"user-service/internal/graphql"
 	"user-service/internal/graphql/generated"
 	"user-service/internal/graphql/resolver"
-	"user-service/pkg/config"
 	logger "user-service/pkg/logger"
 
 	"github.com/99designs/gqlgen/graphql/handler"

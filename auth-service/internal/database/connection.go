@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"user-service/config"
 	"user-service/internal/models"
-	"user-service/pkg/config"
 	"user-service/pkg/logger"
 
 	"gorm.io/driver/postgres"

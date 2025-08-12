@@ -75,4 +75,5 @@ type Mutation {
   ): UserMutationResponse!
   login(input: UserInput!): AuthMutationResponse!
   renewToken(refreshToken: String!): AuthMutationResponse!
+  assignRole(userId: ID!, role: UserType!): UserMutationResponse!
 }

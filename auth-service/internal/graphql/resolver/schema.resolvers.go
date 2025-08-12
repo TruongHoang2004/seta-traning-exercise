@@ -230,6 +230,44 @@ func (r *mutationResolver) RenewToken(ctx context.Context, refreshToken string) 
 	}, nil
 }
 
+// AssignRole is the resolver for the assignRole field.
+func (r *mutationResolver) AssignRole(ctx context.Context, userID string, role model.UserType) (*model.UserMutationResponse, error) {
+	result := database.DB.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("role", models.UserType(role))
+
+	if result.Error != nil {
+		logger.Error("Failed to assign role", result.Error)
+		message := "Failed to assign role"
+		return &model.UserMutationResponse{
+			Code:    "500",
+			Success: false,
+			Message: &message,
+			Errors:  []*string{&message},
+		}, nil
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Error("User not found")
+		message := "User not found"
+		return &model.UserMutationResponse{
+			Code:    "404",
+			Success: false,
+			Message: &message,
+			Errors:  []*string{&message},
+		}, nil
+	}
+
+	// Nếu thành công
+	message := "Role assigned successfully"
+	return &model.UserMutationResponse{
+		Code:    "200",
+		Success: true,
+		Message: &message,
+	}, nil
+
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, role *model.UserType, userIds []string) ([]*model.User, error) {
 	var users []models.User

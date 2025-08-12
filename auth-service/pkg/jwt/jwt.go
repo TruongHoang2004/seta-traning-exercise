@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"user-service/pkg/config"
+	"user-service/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )
