@@ -29,6 +29,7 @@ func CreateFolder(c *gin.Context) {
 	var folderDTO dto.FolderDTO
 
 	if err := c.ShouldBindJSON(&folderDTO); err != nil {
+		// custom error to response
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -41,6 +42,7 @@ func CreateFolder(c *gin.Context) {
 
 	// Kiểm tra folder trùng tên (tối ưu hóa bằng SELECT EXISTS)
 	var exists bool
+	// use gorm instead of raw SQL
 	err = database.DB.
 		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE owner_id = ? AND name = ?) AS exists", userId, folderDTO.Name).
 		Scan(&exists).Error
@@ -58,6 +60,7 @@ func CreateFolder(c *gin.Context) {
 		OwnerID: userId,
 	}
 
+	// pass ctx to database.DB.Create
 	if err := database.DB.Create(&folder).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
