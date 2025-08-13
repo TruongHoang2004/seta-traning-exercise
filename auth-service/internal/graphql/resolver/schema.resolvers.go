@@ -14,7 +14,6 @@ import (
 	"user-service/pkg/jwt"
 	"user-service/pkg/logger"
 
-	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,7 +22,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.CreateUse
 	if err := r.Validate.Struct(input); err != nil {
 		message := "Validation failed"
 		errMsg := err.Error()
-		logger.Error("Validation error", zap.String("message", message), zap.String("error", errMsg))
+		logger.Error("Validation error", err)
 		return &model.UserMutationResponse{
 			Code:    "400",
 			Success: false,
@@ -35,7 +34,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.CreateUse
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		logger.Error("Failed to hash password", zap.Error(err))
+		logger.Error("Failed to hash password", err)
 		message := "Failed to hash password"
 		return &model.UserMutationResponse{
 			Code:    "500",
@@ -55,7 +54,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.CreateUse
 	// Check if email already exists more efficiently using a count query
 	var count int64
 	if err := database.DB.Model(&models.User{}).Where("email = ?", input.Email).Count(&count).Error; err != nil {
-		logger.Error("Database error checking email", zap.Error(err))
+		logger.Error("Database error checking email", err)
 		message := "Database error"
 		return &model.UserMutationResponse{
 			Code:    "500",
@@ -66,7 +65,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.CreateUse
 	}
 
 	if count > 0 {
-		logger.Error("Email already exists", zap.String("email", input.Email))
+		logger.Error("Email already exists", err)
 		message := "Email already exists"
 		return &model.UserMutationResponse{
 			Code:    "400",
@@ -78,7 +77,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.CreateUse
 
 	// Create user in database
 	if err := database.DB.Create(user).Error; err != nil {
-		logger.Error("Failed to create user", zap.Error(err))
+		logger.Error("Failed to create user", err)
 		message := "Failed to create user"
 		return &model.UserMutationResponse{
 			Code:    "500",
@@ -112,7 +111,7 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, userID string, userna
 	}
 
 	if err := database.DB.Save(user).Error; err != nil {
-		logger.Error("Failed to update user", zap.Error(err))
+		logger.Error("Failed to update user", err)
 		message := "Failed to update user"
 		return &model.UserMutationResponse{
 			Code:    "500",
@@ -144,7 +143,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*m
 	// Find the user by email
 	var user models.User
 	if err := database.DB.Where("email = ?", email).First(&user).Error; err != nil {
-		logger.Error("User not found", zap.String("email", email), zap.Error(err))
+		logger.Error("User not found", err)
 		message := "Invalid email or password"
 		return &model.AuthMutationResponse{
 			Code:    "401",
@@ -156,7 +155,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*m
 
 	// Compare the provided password with the stored hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		logger.Error("Invalid password", zap.String("email", email), zap.Error(err))
+		logger.Error("Invalid password", err)
 		message := "Invalid email or password"
 		return &model.AuthMutationResponse{
 			Code:    "401",
@@ -168,7 +167,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*m
 
 	accessToken, err := jwt.CreateAccessToken(user.ID)
 	if err != nil {
-		logger.Error("Failed to create access token", zap.Error(err))
+		logger.Error("Failed to create access token", err)
 		message := "Failed to create access token"
 		return &model.AuthMutationResponse{
 			Code:    "500",
@@ -180,7 +179,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*m
 
 	refreshToken, err := jwt.CreateRefreshToken(user.ID)
 	if err != nil {
-		logger.Error("Failed to create refresh token", zap.Error(err))
+		logger.Error("Failed to create refresh token", err)
 		message := "Failed to create refresh token"
 		return &model.AuthMutationResponse{
 			Code:    "500",
@@ -212,7 +211,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.UserInput) (*m
 func (r *mutationResolver) RenewToken(ctx context.Context, refreshToken string) (*model.AuthMutationResponse, error) {
 	accessToken, refreshToken, err := jwt.RefreshTokens(refreshToken)
 	if err != nil {
-		logger.Error("Failed to renew tokens", zap.Error(err))
+		logger.Error("Failed to renew tokens", err)
 		message := "Failed to renew tokens"
 		return &model.AuthMutationResponse{
 			Code:    "500",
@@ -231,13 +230,64 @@ func (r *mutationResolver) RenewToken(ctx context.Context, refreshToken string) 
 	}, nil
 }
 
+// AssignRole is the resolver for the assignRole field.
+func (r *mutationResolver) AssignRole(ctx context.Context, userID string, role model.UserType) (*model.UserMutationResponse, error) {
+	result := database.DB.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("role", models.UserType(role))
+
+	if result.Error != nil {
+		logger.Error("Failed to assign role", result.Error)
+		message := "Failed to assign role"
+		return &model.UserMutationResponse{
+			Code:    "500",
+			Success: false,
+			Message: &message,
+			Errors:  []*string{&message},
+		}, nil
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Error("User not found")
+		message := "User not found"
+		return &model.UserMutationResponse{
+			Code:    "404",
+			Success: false,
+			Message: &message,
+			Errors:  []*string{&message},
+		}, nil
+	}
+
+	// Nếu thành công
+	message := "Role assigned successfully"
+	return &model.UserMutationResponse{
+		Code:    "200",
+		Success: true,
+		Message: &message,
+	}, nil
+
+}
+
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context, role model.UserType) ([]*model.User, error) {
+func (r *queryResolver) Users(ctx context.Context, role *model.UserType, userIds []string) ([]*model.User, error) {
 	var users []models.User
 	query := database.DB.Model(&models.User{})
 
+	// Apply filters based on parameters
+	// Build the query based on filters
+	if role != nil && len(userIds) > 0 {
+		// Find users that match EITHER the role OR have IDs in the userIds list
+		query = query.Where("role = ? OR id IN ?", *role, userIds)
+	} else if role != nil {
+		// Filter by role only
+		query = query.Where("role = ?", *role)
+	} else if len(userIds) > 0 {
+		// Filter by user IDs only
+		query = query.Where("id IN ?", userIds)
+	}
+
 	if err := query.Find(&users).Error; err != nil {
-		logger.Error("Failed to fetch users", zap.Error(err))
+		logger.Error("Failed to fetch users", err)
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
 
@@ -258,7 +308,29 @@ func (r *queryResolver) Users(ctx context.Context, role model.UserType) ([]*mode
 func (r *queryResolver) User(ctx context.Context, userID string) (*model.User, error) {
 	var user models.User
 	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
-		logger.Error("User not found", zap.String("userID", userID), zap.Error(err))
+		logger.Error("User not found", err)
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	return &model.User{
+		UserID:   user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     model.UserType(user.Role),
+	}, nil
+}
+
+// ParseToken is the resolver for the parseToken field.
+func (r *queryResolver) ParseToken(ctx context.Context, accessToken string) (*model.User, error) {
+	userID, err := jwt.ValidateToken(accessToken, true)
+	if err != nil {
+		logger.Error("Failed to parse token", err)
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+		logger.Error("User not found", err)
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
 

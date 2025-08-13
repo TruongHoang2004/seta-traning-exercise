@@ -9,3 +9,7 @@ type Roster struct {
 
 	IsLeader bool `gorm:"default:false"`
 }
+
+func (Roster) TableName() string {
+	return "rosters"
+}

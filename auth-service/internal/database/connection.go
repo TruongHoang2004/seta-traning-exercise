@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"user-service/config"
 	"user-service/internal/models"
 	"user-service/pkg/logger"
 
-	"github.com/joho/godotenv"
-	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -16,18 +15,13 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	// Load file .env
-	err := godotenv.Load()
-	if err != nil {
-		logger.Error("Error loading .env file", zap.Error(err))
-	}
 
 	// Lấy thông tin từ biến môi trường
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
+	host := config.GetConfig().DBHost
+	user := config.GetConfig().DBUser
+	password := config.GetConfig().DBPassword
+	dbname := config.GetConfig().DBName
+	port := config.GetConfig().DBPort
 
 	log.Printf("Connecting to database: %s on %s:%s", dbname, host, port)
 
@@ -38,13 +32,14 @@ func Connect() {
 	var dbErr error
 	DB, dbErr = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if dbErr != nil {
-		logger.Error("Failed to connect to database", zap.Error(dbErr))
+		logger.Error("Failed to connect to database", dbErr)
+		os.Exit(1)
 	}
 
 	// Get the underlying SQL DB object
 	sqlDB, err := DB.DB()
 	if err != nil {
-		logger.Error("Failed to get SQL DB object", zap.Error(err))
+		logger.Error("Failed to get SQL DB object", err)
 	}
 
 	// Set connection pool settings
@@ -60,7 +55,7 @@ func Connect() {
 	log.Println("Running auto migrations...")
 
 	if err := DB.AutoMigrate(&models.User{}); err != nil {
-		logger.Error("Auto migration for User failed", zap.Error(err))
+		logger.Error("Auto migration for User failed", err)
 	}
 
 	logger.Info("Auto migrations completed successfully")
@@ -69,12 +64,12 @@ func Connect() {
 func Close() {
 	sqlDB, err := DB.DB()
 	if err != nil {
-		logger.Error("Failed to get SQL DB object for closing", zap.Error(err))
+		logger.Error("Failed to get SQL DB object for closing", err)
 		return
 	}
 
 	if err := sqlDB.Close(); err != nil {
-		logger.Error("Failed to close database connection", zap.Error(err))
+		logger.Error("Failed to close database connection", err)
 	} else {
 		logger.Info("Database connection closed successfully")
 	}

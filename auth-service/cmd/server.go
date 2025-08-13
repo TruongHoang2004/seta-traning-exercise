@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
+	"user-service/config"
 	"user-service/internal/database"
 	"user-service/internal/graphql"
 	"user-service/internal/graphql/generated"
@@ -16,22 +16,17 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog"
 	"github.com/vektah/gqlparser/v2/ast"
-	"go.uber.org/zap/zapcore"
 )
-
-const defaultPort = "4000"
 
 func main() {
 	// Initialize logger
-	logger.Init(false, "logs/auth_service.log", zapcore.DebugLevel)
+	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
 	database.Connect()
 	defer database.Close()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
+	port := config.GetConfig().Port
 
 	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{Validate: validator.New()}}))
 

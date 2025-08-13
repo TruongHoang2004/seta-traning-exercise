@@ -2,12 +2,10 @@ package graphql
 
 import (
 	"context"
-	"log"
 	"time"
 	"user-service/pkg/logger"
 
 	"github.com/99designs/gqlgen/graphql"
-	"go.uber.org/zap"
 )
 
 type LoggerExtension struct{}
@@ -24,27 +22,85 @@ func (l LoggerExtension) InterceptOperation(ctx context.Context, next graphql.Op
 	start := time.Now()
 	rc := graphql.GetOperationContext(ctx)
 
-	// Lấy response handler
 	respHandler := next(ctx)
 
 	return func(ctx context.Context) *graphql.Response {
-		resp := respHandler(ctx) // thực thi xử lý thật sự ở đây
+		resp := respHandler(ctx)
 		latency := time.Since(start)
 
-		// Log với zap
-		logger.Info("GraphQL request processed",
-			zap.String("latency", latency.String()),
-			zap.String("operation", rc.OperationName),
-			zap.String("operationType", string(rc.Operation.Operation)), // query / mutation
-			zap.String("query", rc.RawQuery),
-			zap.Any("variables", rc.Variables),
-			zap.Int("errorCount", len(resp.Errors)), // số lỗi (nếu có)
-		)
+		hasSystemError := false
+		hasUserError := false
 
-		// In log bằng log.Printf (tuỳ mục đích)
-		log.Printf("[GraphQL] %s: %s", rc.Operation.Operation, rc.RawQuery)
-		log.Printf("[Variables]: %v", rc.Variables)
+		for _, err := range resp.Errors {
+			if code, ok := err.Extensions["code"].(string); ok {
+				switch code {
+				case "INTERNAL_SERVER_ERROR", "DATABASE_ERROR", "PANIC":
+					hasSystemError = true
+				case "BAD_USER_INPUT", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND":
+					hasUserError = true
+				}
+			} else {
+				hasSystemError = true
+			}
+		}
+
+		// List of sensitive keys to redact
+		sensitiveKeys := map[string]struct{}{
+			"password":        {},
+			"newPassword":     {},
+			"currentPassword": {},
+			"confirmPassword": {},
+			"token":           {},
+			"accessToken":     {},
+			"refreshToken":    {},
+		}
+
+		filteredVars := sanitizeVariables(rc.Variables, sensitiveKeys)
+
+		fields := []any{
+			"operation", rc.OperationName,
+			"operationType", string(rc.Operation.Operation),
+			"latency", latency.String(),
+			"variables", filteredVars,
+			"errorCount", len(resp.Errors),
+		}
+
+		if len(resp.Errors) > 0 {
+			fields = append(fields, "errors", resp.Errors)
+		}
+
+		switch {
+		case hasSystemError:
+			fields = append(fields, "status", "system_error")
+			logger.Error("GraphQL system error", fields...)
+		case hasUserError:
+			fields = append(fields, "status", "user_error")
+			logger.Warn("GraphQL user error", fields...)
+		default:
+			fields = append(fields, "status", "success")
+			logger.Info("GraphQL request success", fields...)
+		}
 
 		return resp
 	}
+}
+
+func sanitizeVariables(vars map[string]interface{}, sensitiveKeys map[string]struct{}) map[string]interface{} {
+	safe := make(map[string]interface{}, len(vars))
+
+	for k, v := range vars {
+		if _, sensitive := sensitiveKeys[k]; sensitive {
+			safe[k] = "[REDACTED]"
+			continue
+		}
+
+		// Nếu là map lồng, gọi đệ quy
+		if nestedMap, ok := v.(map[string]interface{}); ok {
+			safe[k] = sanitizeVariables(nestedMap, sensitiveKeys)
+		} else {
+			safe[k] = v
+		}
+	}
+
+	return safe
 }

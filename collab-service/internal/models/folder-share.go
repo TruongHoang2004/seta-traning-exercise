@@ -15,8 +15,6 @@ type FolderShare struct {
 	Access AccessRole
 }
 
-// Todo: add tableName
-
 func (FolderShare) TableName() string {
 	return "folder_shares"
 }
