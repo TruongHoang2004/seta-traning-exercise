@@ -917,6 +917,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/teams/{teamId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get team details by ID",
+                "tags": [
+                    "teams"
+                ],
+                "summary": "Get team by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID (UUID)",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Team details",
+                        "schema": {
+                            "$ref": "#/definitions/models.Team"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/teams/{teamId}/assets": {
             "get": {
                 "security": [
@@ -1458,14 +1513,10 @@ const docTemplate = `{
         "dto.ManagerInput": {
             "type": "object",
             "required": [
-                "managerId",
-                "managerName"
+                "managerId"
             ],
             "properties": {
                 "managerId": {
-                    "type": "string"
-                },
-                "managerName": {
                     "type": "string"
                 }
             }
@@ -1473,14 +1524,10 @@ const docTemplate = `{
         "dto.MemberInput": {
             "type": "object",
             "required": [
-                "memberId",
-                "memberName"
+                "memberId"
             ],
             "properties": {
                 "memberId": {
-                    "type": "string"
-                },
-                "memberName": {
                     "type": "string"
                 }
             }
@@ -1564,6 +1611,43 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Roster": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "isLeader": {
+                    "type": "boolean"
+                },
+                "team": {
+                    "$ref": "#/definitions/models.Team"
+                },
+                "teamID": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Team": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "rosters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Roster"
+                    }
+                },
+                "teamName": {
                     "type": "string"
                 }
             }

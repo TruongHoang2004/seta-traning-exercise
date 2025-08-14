@@ -1,9 +1,10 @@
 package main
 
 import (
+	"collab-service/config"
 	"collab-service/internal/database"
 	"collab-service/internal/routes"
-	"collab-service/pkg/config"
+	"collab-service/pkg/cache"
 	"collab-service/pkg/logger"
 
 	"github.com/rs/zerolog"
@@ -23,7 +24,7 @@ import (
 
 func main() {
 	// Load environment variables
-	// config.LoadEnv()
+	config.LoadEnv()
 
 	// Init logger
 	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
@@ -32,6 +33,8 @@ func main() {
 	// Connect to database
 	database.Connect()
 	defer database.Close()
+
+	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
 
 	// Setup API routes
 	router := routes.SetupRoutes()

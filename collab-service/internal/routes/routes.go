@@ -34,6 +34,7 @@ func SetupRoutes() *gin.Engine {
 
 			// Team management
 			protected.POST("/teams", controllers.CreateTeam)
+			protected.GET("/teams/:teamId", controllers.GetTeamByID)
 			protected.POST("/teams/:teamId/members", controllers.AddMemberToTeam)
 			protected.DELETE("/teams/:teamId/members/:memberId", controllers.RemoveMemberFromTeam)
 			protected.POST("/teams/:teamId/managers", controllers.AddManagerToTeam)

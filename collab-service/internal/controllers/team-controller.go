@@ -1,17 +1,20 @@
 package controllers
 
 import (
+	"collab-service/config"
 	"collab-service/internal/database"
 	"collab-service/internal/dto"
 	"collab-service/internal/middleware"
 	"collab-service/internal/models"
+	"collab-service/pkg/cache"
 	"collab-service/pkg/client"
-	"collab-service/pkg/config"
 	"collab-service/pkg/logger"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // @Security BearerAuth
@@ -153,7 +156,8 @@ func CreateTeam(c *gin.Context) {
 
 	// 13. Trả về dữ liệu team kèm danh sách roster (không còn eager load User)
 	var teamWithRoster models.Team
-	if err := database.DB.Preload("Rosters").First(&teamWithRoster, team.ID).Error; err != nil {
+	if err := database.DB.Preload("Rosters").
+		First(&teamWithRoster, "id = ?", team.ID).Error; err != nil {
 		logger.Error("Failed to load team with roster", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load team data"})
 		return
@@ -161,6 +165,62 @@ func CreateTeam(c *gin.Context) {
 
 	logger.Info("Team created successfully", "teamId", team.ID, "teamName", team.TeamName)
 	c.JSON(http.StatusCreated, gin.H{"message": "team created successfully", "team": teamWithRoster})
+}
+
+// @Security BearerAuth
+// @Summary Get team by ID
+// @Description Get team details by ID
+// @Tags teams
+// @Param teamId path string true "Team ID (UUID)"
+// @Success 200 {object} models.Team "Team details"
+// @Failure 400 {object} object "Bad request"
+// @Failure 401 {object} object "Unauthorized"
+// @Failure 404 {object} object "Team not found"
+// @Failure 500 {object} object "Internal server error"
+// @Router /teams/{teamId} [get]
+func GetTeamByID(c *gin.Context) {
+	teamID := c.Param("teamId")
+
+	// 1. Thử lấy userIDs từ cache
+	userIDs, err := cache.GetTeamMembers(c, teamID)
+	if err == nil && len(userIDs) > 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"teamId":  teamID,
+			"members": userIDs,
+			"source":  "cache",
+		})
+		return
+	}
+
+	// 2. Nếu không có trong cache → query DB
+	var team models.Team
+	if err := database.DB.Preload("Rosters").First(&team, "id = ?", teamID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("Not found")
+		} else {
+			fmt.Println("Error:", err)
+		}
+	} else {
+		fmt.Println("Found team:", team)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"teamId": teamID,
+		"members": func() []string {
+			ids := []string{}
+			for _, r := range team.Rosters {
+				ids = append(ids, r.UserID)
+			}
+			return ids
+		}(),
+		"source": "db",
+	})
+
+	// 3. Cache lại userIDs
+	for _, r := range team.Rosters {
+		_ = cache.AddTeamMember(c, teamID, r.UserID)
+	}
+
 }
 
 // @Security BearerAuth

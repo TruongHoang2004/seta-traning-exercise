@@ -2,8 +2,8 @@
 package middleware
 
 import (
+	"collab-service/config"
 	"collab-service/pkg/client"
-	"collab-service/pkg/config"
 	"context"
 	"errors"
 	"strings"

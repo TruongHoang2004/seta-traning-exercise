@@ -74,21 +74,15 @@ definitions:
     properties:
       managerId:
         type: string
-      managerName:
-        type: string
     required:
     - managerId
-    - managerName
     type: object
   dto.MemberInput:
     properties:
       memberId:
         type: string
-      memberName:
-        type: string
     required:
     - memberId
-    - memberName
     type: object
   dto.ShareDTO:
     properties:
@@ -143,6 +137,30 @@ definitions:
       ownerID:
         type: string
       title:
+        type: string
+    type: object
+  models.Roster:
+    properties:
+      id:
+        type: string
+      isLeader:
+        type: boolean
+      team:
+        $ref: '#/definitions/models.Team'
+      teamID:
+        type: string
+      userID:
+        type: string
+    type: object
+  models.Team:
+    properties:
+      id:
+        type: string
+      rosters:
+        items:
+          $ref: '#/definitions/models.Roster'
+        type: array
+      teamName:
         type: string
     type: object
 host: localhost:8080
@@ -731,6 +749,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Create a new team
+      tags:
+      - teams
+  /teams/{teamId}:
+    get:
+      description: Get team details by ID
+      parameters:
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Team details
+          schema:
+            $ref: '#/definitions/models.Team'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "404":
+          description: Team not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get team by ID
       tags:
       - teams
   /teams/{teamId}/assets:
