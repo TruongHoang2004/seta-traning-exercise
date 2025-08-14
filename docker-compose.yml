@@ -89,7 +89,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      auth-service:
+      user-service:
         condition: service_started
       redis:
         condition: service_healthy
@@ -110,7 +110,7 @@ services:
     container_name: promtail
     volumes:
       - ./promtail-config.yml:/etc/promtail/config.yml
-      - ./auth-service/logs:/var/log/auth-service
+      - ./user-service/logs:/var/log/user-service
       - ./collab-service/logs:/var/log/collab-service
     command: -config.file=/etc/promtail/config.yml
     depends_on:

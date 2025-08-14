@@ -2,8 +2,8 @@
 
 This project contains two Golang microservices with comprehensive logging and monitoring setup:
 
-- **auth-service**: Handles authentication and user management
-- **collab-service**: Manages collaboration features and communicates with `auth-service`
+- **user-service**: Handles authentication and user management
+- **collab-service**: Manages collaboration features and communicates with `user-service`
 
 ## 🛠️ Prerequisites
 
@@ -16,7 +16,7 @@ Make sure you have the following installed:
 
 ```
 .
-├── auth-service/
+├── user-service/
 │   ├── Dockerfile
 │   └── logs/
 ├── collab-service/
@@ -42,7 +42,7 @@ cd your-repo
 docker-compose up --build
 ```
 
-Wait until all services (PostgreSQL, auth-service, collab-service, Loki, Promtail, Grafana) are up and running.
+Wait until all services (PostgreSQL, user-service, collab-service, Loki, Promtail, Grafana) are up and running.
 
 ## ⚙️ Service Details
 
@@ -80,14 +80,14 @@ Wait until all services (PostgreSQL, auth-service, collab-service, Loki, Promtai
 1. Navigate to **Settings** → **Data Sources**
 2. Add a Loki data source with the URL: `http://loki:3100`
 3. Go to **Explore** tab and choose:
-   - `{job="auth-service"}` for auth logs
+   - `{job="user-service"}` for auth logs
    - `{job="collab-service"}` for collab logs
 
 ### 📜 Promtail Configuration
 
 Promtail reads logs from the following mounted files:
 
-- `auth-service/logs/auth_service.log`
+- `user-service/logs/auth_service.log`
 - `collab-service/logs/server.log`
 
 **Important**: Ensure your services write logs to these paths in structured format (preferably JSON).
@@ -96,11 +96,11 @@ Promtail reads logs from the following mounted files:
 
 ### Running a Single Service
 
-To build and run only the auth-service:
+To build and run only the user-service:
 
 ```bash
-docker-compose build auth-service
-docker-compose up -d auth-service
+docker-compose build user-service
+docker-compose up -d user-service
 ```
 
 To build and run only the collab-service:
@@ -156,8 +156,8 @@ Environment variables can be customized by modifying the docker-compose file or 
 ### Viewing Logs:
 
 ```bash
-# View auth-service logs
-docker-compose logs auth-service
+# View user-service logs
+docker-compose logs user-service
 
 # View collab-service logs
 docker-compose logs collab-service

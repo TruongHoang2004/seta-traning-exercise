@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build binary, bỏ debug symbols để giảm size
-RUN go build -ldflags="-s -w" -o auth-service ./cmd/server.go
+RUN go build -ldflags="-s -w" -o user-service ./cmd/server.go
 
 
 # ===== STAGE 2: RUN =====
@@ -26,10 +26,10 @@ FROM alpine:3.19
 WORKDIR /app
 
 # Copy binary từ stage build
-COPY --from=builder /app/auth-service .
+COPY --from=builder /app/user-service .
 
 # Mở port (tùy app)
 EXPOSE 8080
 
 # Chạy app
-CMD ["./auth-service"]
+CMD ["./user-service"]
