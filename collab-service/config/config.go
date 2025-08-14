@@ -1,6 +1,7 @@
 package config
 
 import (
+	"collab-service/pkg/logger"
 	"log"
 	"os"
 
@@ -29,6 +30,7 @@ func LoadEnv() error {
 	// Find .env file in the project root or current directory
 	err := godotenv.Load()
 	if err != nil {
+		logger.Warn("Warning: .env file not found")
 		log.Printf("Warning: .env file not found: %v", err)
 		// Continue execution even if .env is not found
 		// Variables might be set in the environment directly

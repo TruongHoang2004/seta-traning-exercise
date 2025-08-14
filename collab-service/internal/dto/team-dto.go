@@ -8,13 +8,11 @@ type CreateTeamInput struct {
 }
 
 type ManagerInput struct {
-	ManagerID   string `json:"managerId" binding:"required"`
-	ManagerName string `json:"managerName" binding:"required"`
+	ManagerID string `json:"managerId" binding:"required"`
 }
 
 type MemberInput struct {
-	MemberID   string `json:"memberId" binding:"required"`
-	MemberName string `json:"memberName" binding:"required"`
+	MemberID string `json:"memberId" binding:"required"`
 }
 
 type AddMemberToTeamInput struct {

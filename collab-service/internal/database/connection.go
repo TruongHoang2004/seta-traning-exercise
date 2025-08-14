@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 	//  use zap log for better performance
+	"collab-service/config"
 	"collab-service/internal/models"
-	"collab-service/pkg/config"
 	"log"
 
 	"gorm.io/driver/postgres"

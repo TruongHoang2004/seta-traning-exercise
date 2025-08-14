@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"collab-service/pkg/config"
+	"collab-service/config"
 	"fmt"
 	"time"
 

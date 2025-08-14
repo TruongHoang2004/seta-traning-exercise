@@ -1,9 +1,9 @@
 package controllers
 
 import (
+	"collab-service/config"
 	"collab-service/internal/dto"
 	"collab-service/pkg/client"
-	"collab-service/pkg/config"
 	"encoding/csv"
 	"net/http"
 
