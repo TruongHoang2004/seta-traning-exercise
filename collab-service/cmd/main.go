@@ -6,46 +6,63 @@ import (
 	"collab-service/internal/routes"
 	"collab-service/pkg/cache"
 	"collab-service/pkg/logger"
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/rs/zerolog"
-	// Chỉnh đúng path nếu cần
 )
 
-// @title           Collab Service API
-// @version         1.0
-// @description     API for managing teams, folders, notes, and sharing.
-// @host            localhost:8080
-// @BasePath        /api
-
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-// @description Enter JWT token like: Bearer <your-token>
-
 func main() {
-	// Load environment variables
+	// Load env
 	config.LoadEnv()
 
 	// Init logger
 	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
 	defer logger.Close()
 
-	// Connect to database
+	// Connect DB + Redis
 	database.Connect()
 	defer database.Close()
-
 	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
 
-	// Setup API routes
+	// Setup routes
 	router := routes.SetupRoutes()
 
-	// Start server
-	port := config.GetConfig().Port
-
-	logger.Info("Server starting on port " + port)
-	logger.Info("Swagger at http://localhost:" + port + "/swagger/index.html")
-
-	if err := router.Run(":" + port); err != nil {
-		logger.Error("Failed to start server: " + err.Error())
+	// Create HTTP server manually (so we can shut it down)
+	srv := &http.Server{
+		Addr:    ":" + config.GetConfig().Port,
+		Handler: router,
 	}
+
+	// Run server in goroutine
+	go func() {
+		logger.Info(fmt.Sprintf("Server starting on port %s", config.GetConfig().Port))
+		logger.Info(fmt.Sprintf("Swagger at http://localhost:%s/swagger/index.html", config.GetConfig().Port))
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Failed to start server: " + err.Error())
+		}
+	}()
+
+	// Wait for interrupt signal (CTRL+C, SIGTERM, SIGINT)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logger.Info("Shutting down server...")
+
+	// Context with timeout for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Shutdown HTTP server gracefully
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("Server forced to shutdown: " + err.Error())
+	}
+
+	// Extra cleanup if needed
+	logger.Info("Server exited cleanly")
 }

@@ -321,6 +321,13 @@ func AddMemberToTeam(c *gin.Context) {
 
 	logger.Info("Member added to team", "teamId", teamID, "userId", input.UserID)
 	c.JSON(http.StatusCreated, gin.H{"message": "member added successfully"})
+
+	// 12. Cập nhật cache
+	if err := cache.AddTeamMember(c, teamID, input.UserID); err != nil {
+		logger.Error("Failed to add member to cache", "teamId", teamID, "userId", input.UserID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update cache"})
+		return
+	}
 }
 
 // @Security BearerAuth
@@ -375,6 +382,14 @@ func RemoveMemberFromTeam(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "member removed successfully"})
+
+	// 7. Xóa khỏi cache
+	if err := cache.RemoveTeamMember(c, teamID, memberID); err != nil {
+		logger.Error("Failed to remove member from cache", "teamId", teamID, "memberId", memberID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update cache"})
+		return
+	}
+	logger.Info("Member removed from team", "teamId", teamID, "memberId", memberID)
 }
 
 // @Security BearerAuth
@@ -453,6 +468,13 @@ func AddManagerToTeam(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "manager added successfully"})
+
+	// 10. Cập nhật cache
+	if err := cache.AddTeamMember(c, teamID, input.UserID); err != nil {
+		logger.Error("Failed to add manager to cache", "teamId", teamID, "userId", input.UserID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update cache"})
+		return
+	}
 }
 
 // @Security BearerAuth
@@ -508,4 +530,12 @@ func RemoveManagerFromTeam(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "manager removed successfully"})
+
+	// 7. Xóa khỏi cache
+	if err := cache.RemoveTeamMember(c, teamID, managerID); err != nil {
+		logger.Error("Failed to remove manager from cache", "teamId", teamID, "managerId", managerID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update cache"})
+		return
+	}
+	logger.Info("Manager removed from team", "teamId", teamID, "managerId", managerID)
 }
