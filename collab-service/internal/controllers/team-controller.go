@@ -34,6 +34,7 @@ import (
 func CreateTeam(c *gin.Context) {
 	// 1. Xác thực người dùng và quyền hạn
 	userID, userRole := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	if userRole != client.UserType(client.UserTypeManager) {
 		logger.Info("Unauthorized access", "userId", userID, "role", userRole)
@@ -116,7 +117,7 @@ func CreateTeam(c *gin.Context) {
 	}
 
 	// 9. Tạo transaction và thêm team mới
-	tx := database.DB.Begin()
+	tx := db.Begin()
 	team := models.Team{TeamName: input.TeamName}
 	if err := tx.Create(&team).Error; err != nil {
 		tx.Rollback()
@@ -156,7 +157,7 @@ func CreateTeam(c *gin.Context) {
 
 	// 13. Trả về dữ liệu team kèm danh sách roster (không còn eager load User)
 	var teamWithRoster models.Team
-	if err := database.DB.Preload("Rosters").
+	if err := db.Preload("Rosters").
 		First(&teamWithRoster, "id = ?", team.ID).Error; err != nil {
 		logger.Error("Failed to load team with roster", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load team data"})
@@ -180,6 +181,7 @@ func CreateTeam(c *gin.Context) {
 // @Router /teams/{teamId} [get]
 func GetTeamByID(c *gin.Context) {
 	teamID := c.Param("teamId")
+	db := database.DB.WithContext(c.Request.Context())
 
 	// 1. Thử lấy userIDs từ cache
 	userIDs, err := cache.GetTeamMembers(c, teamID)
@@ -194,7 +196,7 @@ func GetTeamByID(c *gin.Context) {
 
 	// 2. Nếu không có trong cache → query DB
 	var team models.Team
-	if err := database.DB.Preload("Rosters").First(&team, "id = ?", teamID).Error; err != nil {
+	if err := db.Preload("Rosters").First(&team, "id = ?", teamID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			fmt.Println("Not found")
 		} else {
@@ -241,6 +243,7 @@ func GetTeamByID(c *gin.Context) {
 func AddMemberToTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
 	userID, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	// 2. Lấy teamID từ URL
 	teamID := c.Param("teamId")
@@ -255,7 +258,7 @@ func AddMemberToTeam(c *gin.Context) {
 
 	// 4. Kiểm tra team tồn tại
 	var team models.Team
-	if err := database.DB.First(&team, "id = ?", teamID).Error; err != nil {
+	if err := db.First(&team, "id = ?", teamID).Error; err != nil {
 		logger.Info("Team not found", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
@@ -274,7 +277,7 @@ func AddMemberToTeam(c *gin.Context) {
 
 	// 7. Kiểm tra user hiện tại có trong roster
 	var currentRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).
+	if err := db.Where("user_id = ? AND team_id = ?", userID, teamID).
 		First(&currentRoster).Error; err != nil {
 		logger.Info("Current user not in team roster", "error", err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "current user is not in team roster"})
@@ -304,7 +307,7 @@ func AddMemberToTeam(c *gin.Context) {
 
 	// 10. Kiểm tra nếu người dùng đã tồn tại trong roster
 	var existingRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", input.UserID, teamID).
+	if err := db.Where("user_id = ? AND team_id = ?", input.UserID, teamID).
 		First(&existingRoster).Error; err == nil {
 		logger.Info("User already in team roster", "userId", input.UserID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user already in the team"})
@@ -313,7 +316,7 @@ func AddMemberToTeam(c *gin.Context) {
 
 	// 11. Thêm thành viên mới vào roster
 	newMember := models.Roster{UserID: input.UserID, TeamID: teamID, IsLeader: false}
-	if err := database.DB.Create(&newMember).Error; err != nil {
+	if err := db.Create(&newMember).Error; err != nil {
 		logger.Error("Failed to add member to team", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add member to team"})
 		return
@@ -346,6 +349,7 @@ func AddMemberToTeam(c *gin.Context) {
 func RemoveMemberFromTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
 	userID, userRole := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	// 2. Lấy teamID và memberID từ URL
 	teamID := c.Param("teamId")
@@ -353,7 +357,7 @@ func RemoveMemberFromTeam(c *gin.Context) {
 
 	// 3. Kiểm tra user hiện tại có trong đội
 	var currentRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).
+	if err := db.Where("user_id = ? AND team_id = ?", userID, teamID).
 		First(&currentRoster).Error; err != nil {
 		logger.Info("User not in team roster", "userId", userID, "teamId", teamID, "error", err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "you are not a member of this team"})
@@ -369,14 +373,14 @@ func RemoveMemberFromTeam(c *gin.Context) {
 
 	// 5. Kiểm tra user mục tiêu có trong đội
 	var targetRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", memberID, teamID).
+	if err := db.Where("user_id = ? AND team_id = ?", memberID, teamID).
 		First(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "target user is not in the team"})
 		return
 	}
 
 	// 6. Xóa khỏi roster
-	if err := database.DB.Delete(&targetRoster).Error; err != nil {
+	if err := db.Delete(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove member"})
 		return
 	}
@@ -410,6 +414,7 @@ func RemoveMemberFromTeam(c *gin.Context) {
 func AddManagerToTeam(c *gin.Context) {
 	// 1. Xác thực user
 	userID, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	// 2. Lấy teamID
 	teamID := c.Param("teamId")
@@ -423,7 +428,7 @@ func AddManagerToTeam(c *gin.Context) {
 
 	// 4. Kiểm tra team tồn tại
 	var team models.Team
-	if err := database.DB.First(&team, "id = ?", teamID).Error; err != nil {
+	if err := db.First(&team, "id = ?", teamID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "team not found"})
 		return
 	}
@@ -444,7 +449,7 @@ func AddManagerToTeam(c *gin.Context) {
 
 	// 7. Kiểm tra user hiện tại là leader của team
 	var currentRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).First(&currentRoster).Error; err != nil {
+	if err := db.Where("user_id = ? AND team_id = ?", userID, teamID).First(&currentRoster).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "current user is not in team roster"})
 		return
 	}
@@ -455,14 +460,14 @@ func AddManagerToTeam(c *gin.Context) {
 
 	// 8. Kiểm tra user đã tồn tại trong team chưa
 	var existingRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", input.UserID, teamID).First(&existingRoster).Error; err == nil {
+	if err := db.Where("user_id = ? AND team_id = ?", input.UserID, teamID).First(&existingRoster).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user already in the team"})
 		return
 	}
 
 	// 9. Thêm manager mới (không phải leader)
 	newManager := models.Roster{UserID: input.UserID, TeamID: teamID, IsLeader: false}
-	if err := database.DB.Create(&newManager).Error; err != nil {
+	if err := db.Create(&newManager).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add manager to team"})
 		return
 	}
@@ -493,6 +498,7 @@ func AddManagerToTeam(c *gin.Context) {
 func RemoveManagerFromTeam(c *gin.Context) {
 	// 1. Xác thực người dùng
 	userID, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	// 2. Lấy teamID và managerID từ URL
 	teamID := c.Param("teamId")
@@ -500,7 +506,7 @@ func RemoveManagerFromTeam(c *gin.Context) {
 
 	// 3. Kiểm tra user hiện tại là leader của team
 	var currentRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", userID, teamID).First(&currentRoster).Error; err != nil {
+	if err := db.Where("user_id = ? AND team_id = ?", userID, teamID).First(&currentRoster).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "you are not a member of this team"})
 		return
 	}
@@ -511,7 +517,7 @@ func RemoveManagerFromTeam(c *gin.Context) {
 
 	// 4. Kiểm tra manager mục tiêu có trong team
 	var targetRoster models.Roster
-	if err := database.DB.Where("user_id = ? AND team_id = ?", managerID, teamID).
+	if err := db.Where("user_id = ? AND team_id = ?", managerID, teamID).
 		First(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "target user is not in the team"})
 		return
@@ -524,7 +530,7 @@ func RemoveManagerFromTeam(c *gin.Context) {
 	}
 
 	// 6. Xóa khỏi roster
-	if err := database.DB.Delete(&targetRoster).Error; err != nil {
+	if err := db.Delete(&targetRoster).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove manager"})
 		return
 	}

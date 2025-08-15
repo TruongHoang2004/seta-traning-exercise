@@ -23,9 +23,9 @@ func GetTeamAssets(c *gin.Context) {
 	teamID := c.Param("teamId")
 	userID, _ := middleware.GetUserInfoFromGin(c) // middleware sets authenticated user
 
-	db := database.DB
+	db := database.DB.WithContext(c.Request.Context())
 
-	if !isManagerOfTeam(userID, teamID) {
+	if !isManagerOfTeam(c, userID, teamID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Only team managers can access this"})
 		return
 	}
@@ -67,10 +67,10 @@ func GetUserAssets(c *gin.Context) {
 	userID := c.Param("userId")
 	authUserID, _ := middleware.GetUserInfoFromGin(c) // middleware sets authenticated user
 
-	db := database.DB
+	db := database.DB.WithContext(c.Request.Context())
 
 	// Chỉ cho phép user xem của chính mình hoặc manager team của user đó
-	if authUserID != userID && !isManagerOfSameTeam(authUserID, userID) {
+	if authUserID != userID && !isManagerOfSameTeam(c, authUserID, userID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
@@ -88,8 +88,8 @@ func GetUserAssets(c *gin.Context) {
 	})
 }
 
-func isManagerOfTeam(userID, teamID string) bool {
-	db := database.DB
+func isManagerOfTeam(c *gin.Context, userID, teamID string) bool {
+	db := database.DB.WithContext(c.Request.Context())
 	var roster models.Roster
 	if err := db.Where("user_id = ? AND team_id = ? AND is_leader = true", userID, teamID).First(&roster).Error; err != nil {
 		return false
@@ -97,12 +97,13 @@ func isManagerOfTeam(userID, teamID string) bool {
 	return true
 }
 
-func isManagerOfSameTeam(managerID, memberID string) bool {
+func isManagerOfSameTeam(c *gin.Context, managerID, memberID string) bool {
+	db := database.DB.WithContext(c.Request.Context())
 	var managerRosters []models.Roster
-	database.DB.Where("user_id = ? AND is_leader = true", managerID).Find(&managerRosters)
+	db.Where("user_id = ? AND is_leader = true", managerID).Find(&managerRosters)
 
 	var memberRosters []models.Roster
-	database.DB.Where("user_id = ?", memberID).Find(&memberRosters)
+	db.Where("user_id = ?", memberID).Find(&memberRosters)
 
 	for _, m := range managerRosters {
 		for _, u := range memberRosters {

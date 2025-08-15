@@ -4,7 +4,6 @@ import (
 	"collab-service/internal/controllers"
 	"collab-service/internal/docs"
 	"collab-service/internal/middleware"
-	"collab-service/pkg/client"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -24,50 +23,52 @@ func SetupRoutes() *gin.Engine {
 	router.Use(middleware.LoggerpMiddleware()) // custom logger with zap
 
 	api := router.Group("/api")
+
+	// Manager-only APIs
+	managerOnly := api.Group("/")
+	managerOnly.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("manager"))
 	{
-		// Protected routes
-		protected := api.Group("/")
-		protected.Use(middleware.AuthMiddleware()) // JWT Auth
-		{
-			// User import
-			protected.POST("/import-users", controllers.ImportUsersHandler).Use(middleware.RoleMiddleware(client.UserTypeManager))
+		managerOnly.POST("/import-users", controllers.ImportUsersHandler)
+		managerOnly.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
+		managerOnly.GET("/users/:userId/assets", controllers.GetUserAssets)
+	}
 
-			// Team management
-			protected.POST("/teams", controllers.CreateTeam)
-			protected.GET("/teams/:teamId", controllers.GetTeamByID)
-			protected.POST("/teams/:teamId/members", controllers.AddMemberToTeam)
-			protected.DELETE("/teams/:teamId/members/:memberId", controllers.RemoveMemberFromTeam)
-			protected.POST("/teams/:teamId/managers", controllers.AddManagerToTeam)
-			protected.DELETE("/teams/:teamId/managers/:managerId", controllers.RemoveManagerFromTeam)
+	// Team management routes
+	teams := api.Group("/teams")
+	teams.Use(middleware.AuthMiddleware())
+	{
+		teams.POST("", controllers.CreateTeam)
+		teams.GET("/:teamId", controllers.GetTeamByID)
+		teams.POST("/:teamId/members", controllers.AddMemberToTeam)
+		teams.DELETE("/:teamId/members/:memberId", controllers.RemoveMemberFromTeam)
+		teams.POST("/:teamId/managers", controllers.AddManagerToTeam)
+		teams.DELETE("/:teamId/managers/:managerId", controllers.RemoveManagerFromTeam)
+	}
 
-			// Folder management
-			protected.POST("/folders", controllers.CreateFolder)
-			protected.GET("/folders/:folderId", controllers.GetFolder)
-			protected.GET("/folders", controllers.GetFolders)
-			protected.PUT("/folders/:folderId", controllers.UpdateFolder)
-			protected.DELETE("/folders/:folderId", controllers.DeleteFolder)
+	// Folder management routes
+	folders := api.Group("/folders")
+	folders.Use(middleware.AuthMiddleware())
+	{
+		folders.POST("", controllers.CreateFolder)
+		folders.GET("/:folderId", controllers.GetFolder)
+		folders.GET("", controllers.GetFolders)
+		folders.PUT("/:folderId", controllers.UpdateFolder)
+		folders.DELETE("/:folderId", controllers.DeleteFolder)
+		folders.POST("/:folderId/share", controllers.ShareFolder)
+		folders.DELETE("/:folderId/share/:userId", controllers.RevokeFolderShare)
+	}
 
-			// Note management
-			protected.POST("/notes", controllers.CreateNote)
-			protected.GET("/notes", controllers.GetNotes)
-			protected.GET("/notes/:noteId", controllers.GetNote)
-			protected.PUT("/notes/:noteId", controllers.UpdateNote)
-			protected.DELETE("/notes/:noteId", controllers.DeleteNote)
-
-			// Sharing
-			protected.POST("/folders/:folderId/share", controllers.ShareFolder)
-			protected.DELETE("/folders/:folderId/share/:userId", controllers.RevokeFolderShare)
-			protected.POST("/notes/:noteId/share", controllers.ShareNote)
-			protected.DELETE("/notes/:noteId/share/:userId", controllers.RevokeNoteShare)
-
-			// Manager-only APIs
-			managerOnly := protected.Group("/")
-			managerOnly.Use(middleware.RoleMiddleware("manager"))
-			{
-				managerOnly.GET("/teams/:teamId/assets", controllers.GetTeamAssets)
-				managerOnly.GET("/users/:userId/assets", controllers.GetUserAssets)
-			}
-		}
+	// Note management routes
+	notes := api.Group("/notes")
+	notes.Use(middleware.AuthMiddleware())
+	{
+		notes.POST("", controllers.CreateNote)
+		notes.GET("", controllers.GetNotes)
+		notes.GET("/:noteId", controllers.GetNote)
+		notes.PUT("/:noteId", controllers.UpdateNote)
+		notes.DELETE("/:noteId", controllers.DeleteNote)
+		notes.POST("/:noteId/share", controllers.ShareNote)
+		notes.DELETE("/:noteId/share/:userId", controllers.RevokeNoteShare)
 	}
 
 	return router

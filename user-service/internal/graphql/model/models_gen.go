@@ -43,10 +43,10 @@ func (this AuthMutationResponse) GetErrors() []*string {
 }
 
 type CreateUserInput struct {
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Password string   `json:"password"`
-	Role     UserType `json:"role"`
+	Username string   `json:"username" validate:"required,min=3,max=50"`
+	Email    string   `json:"email" validate:"required,email"`
+	Password string   `json:"password" validate:"required,min=6"`
+	Role     UserType `json:"role" validate:"required"`
 }
 
 type Manager struct {

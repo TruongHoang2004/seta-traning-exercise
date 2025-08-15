@@ -47,7 +47,7 @@ services:
     container_name: user-service
     environment:
       PORT: 4000
-      GO_ENV: development
+      GO_ENV: production
       DB_HOST: postgres
       DB_USER: postgres
       DB_PASSWORD: truonghoang2004
@@ -76,7 +76,7 @@ services:
     container_name: collab-service
     environment:
       PORT: 8080
-      GO_ENV: development
+      GO_ENV: production
       DB_HOST: postgres
       DB_USER: postgres
       DB_PASSWORD: truonghoang2004
@@ -84,8 +84,7 @@ services:
       DB_PORT: 5432
       USER_SERVICE_ENDPOINT: http://user-service:4000/query
       LOG_FILE_PATH: ./logs/server.log
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_ADDRESS: redis:6379
     depends_on:
       postgres:
         condition: service_healthy

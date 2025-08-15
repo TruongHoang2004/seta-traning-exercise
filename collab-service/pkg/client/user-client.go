@@ -1,6 +1,7 @@
 package client
 
 import (
+	"collab-service/pkg/client/queries"
 	"context"
 	"time"
 
@@ -80,194 +81,60 @@ func (c *GraphQLClient) doRequest(req *graphql.Request, respData interface{}) er
 	return c.client.Run(ctx, req, respData)
 }
 
+// Methods
 func (c *GraphQLClient) GetUsers(role *UserType, userIDs []string) ([]User, error) {
-	query := `query GetUsers($role: UserType, $userIds: [ID!]) {
-		users(role: $role, userIds: $userIds) {
-			userId
-			username
-			email
-			role
-			createdAt
-		}
-	}`
-
-	req := graphql.NewRequest(query)
-
-	// Only add variables if they're provided
+	req := graphql.NewRequest(queries.GetUsers)
 	if role != nil {
 		req.Var("role", *role)
 	}
 	if len(userIDs) > 0 {
 		req.Var("userIds", userIDs)
 	}
-
 	var resp struct {
 		Users []User `json:"users"`
 	}
-
 	err := c.doRequest(req, &resp)
 	return resp.Users, err
 }
 
 func (c *GraphQLClient) GetUser(userID string) (*User, error) {
-	query := `query GetUser($userId: ID!) {
-		user(userId: $userId) {
-			userId
-			username
-			email
-			role
-			createdAt
-		}
-	}`
-	req := graphql.NewRequest(query)
+	req := graphql.NewRequest(queries.GetUser)
 	req.Var("userId", userID)
-
 	var resp struct {
 		User *User `json:"user"`
 	}
-
 	err := c.doRequest(req, &resp)
 	return resp.User, err
 }
 
 func (c *GraphQLClient) CreateUser(input CreateUserInput) (*UserMutationResponse, error) {
-	query := `mutation CreateUser($input: CreateUserInput!) {
-		createUser(input: $input) {
-			code
-			success
-			message
-			errors
-			user {
-				userId
-				username
-				email
-				role
-				createdAt
-			}
-		}
-	}`
-	req := graphql.NewRequest(query)
+	req := graphql.NewRequest(queries.CreateUser)
 	req.Var("input", input)
-
 	var resp struct {
 		CreateUser UserMutationResponse `json:"createUser"`
 	}
-
 	err := c.doRequest(req, &resp)
 	return &resp.CreateUser, err
 }
 
 func (c *GraphQLClient) UpdateUser(userID, username, email string) (*UserMutationResponse, error) {
-	query := `mutation UpdateUser($userId: ID!, $username: String!, $email: String!) {
-		updateUser(userId: $userId, username: $username, email: $email) {
-			code
-			success
-			message
-			errors
-			user {
-				userId
-				username
-				email
-				role
-				createdAt
-			}
-		}
-	}`
-	req := graphql.NewRequest(query)
+	req := graphql.NewRequest(queries.UpdateUser)
 	req.Var("userId", userID)
 	req.Var("username", username)
 	req.Var("email", email)
-
 	var resp struct {
 		UpdateUser UserMutationResponse `json:"updateUser"`
 	}
-
 	err := c.doRequest(req, &resp)
 	return &resp.UpdateUser, err
 }
 
-func (c *GraphQLClient) Login(input UserInput) (*AuthMutationResponse, error) {
-	query := `mutation Login($input: UserInput!) {
-		login(input: $input) {
-			code
-			success
-			message
-			errors
-			accessToken
-			refreshToken
-			user {
-				userId
-				username
-				email
-				role
-				createdAt
-			}
-		}
-	}`
-	req := graphql.NewRequest(query)
-	req.Var("input", input)
-
-	var resp struct {
-		Login AuthMutationResponse `json:"login"`
-	}
-
-	err := c.doRequest(req, &resp)
-	if err == nil && resp.Login.Success && resp.Login.AccessToken != "" {
-		c.SetAccessToken(resp.Login.AccessToken)
-	}
-	return &resp.Login, err
-}
-
-func (c *GraphQLClient) RenewToken(refreshToken string) (*AuthMutationResponse, error) {
-	query := `mutation RenewToken($refreshToken: String!) {
-		r enewToken(refreshToken: $refreshToken) {
-			code
-			success
-			message
-			errors
-			accessToken
-			refreshToken
-			user {
-				userId
-				username
-				email
-				role
-				createdAt
-			}
-		}
-	}`
-	req := graphql.NewRequest(query)
-	req.Var("refreshToken", refreshToken)
-
-	var resp struct {
-		RenewToken AuthMutationResponse `json:"renewToken"`
-	}
-
-	err := c.doRequest(req, &resp)
-	if err == nil && resp.RenewToken.Success && resp.RenewToken.AccessToken != "" {
-		c.SetAccessToken(resp.RenewToken.AccessToken)
-	}
-	return &resp.RenewToken, err
-}
-
 func (c *GraphQLClient) ValidateToken(ctx context.Context, token string) (*User, error) {
-	query := `query ParseToken($accessToken: String!) {
-		parseToken(accessToken: $accessToken) {
-			userId
-			username
-			email
-			role
-		}
-	}`
-
-	req := graphql.NewRequest(query)
+	req := graphql.NewRequest(queries.ValidateToken)
 	req.Var("accessToken", token)
-
 	var resp struct {
 		ParseToken User `json:"parseToken"`
 	}
-
-	// Use the external context in the request
 	err := c.client.Run(ctx, req, &resp)
 	if err != nil {
 		return nil, err

@@ -14,12 +14,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
 func main() {
 	// Load env
 	config.LoadEnv()
+
+	// Set Gin to release mode for production
+	if config.GetConfig().Production {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// Init logger
 	logger.Init(config.GetConfig().Production, config.GetConfig().LogFilePath, zerolog.DebugLevel)
