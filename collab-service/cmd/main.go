@@ -23,6 +23,7 @@ func main() {
 	config.LoadEnv()
 
 	// Set Gin to release mode for production
+	// good
 	if config.GetConfig().Production {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -36,6 +37,7 @@ func main() {
 	// Connect DB + Redis
 	database.Connect()
 	defer database.Close()
+	// defer close redis
 	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
 
 	// Setup routes

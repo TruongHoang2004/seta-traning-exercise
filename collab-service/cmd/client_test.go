@@ -17,6 +17,7 @@ type graphqlResponse struct {
 	Data interface{} `json:"data"`
 }
 
+// create other package for test
 func TestGetUsers(t *testing.T) {
 	mockUsers := []client.User{
 		{
