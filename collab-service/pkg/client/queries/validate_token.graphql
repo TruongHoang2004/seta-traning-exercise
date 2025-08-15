@@ -1,0 +1,6 @@
+query ParseToken($accessToken: String!) {
+  parseToken(accessToken: $accessToken) {
+    userId
+    role
+  }
+}

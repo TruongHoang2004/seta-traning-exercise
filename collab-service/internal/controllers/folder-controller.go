@@ -28,6 +28,7 @@ import (
 // @Router /folders [post]
 func CreateFolder(c *gin.Context) {
 	var folderDTO dto.FolderDTO
+	db := database.DB.WithContext(c.Request.Context())
 
 	if err := c.ShouldBindJSON(&folderDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -38,9 +39,11 @@ func CreateFolder(c *gin.Context) {
 
 	// Kiểm tra folder trùng tên (tối ưu hóa bằng SELECT EXISTS)
 	var exists bool
-	err := database.DB.
-		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE owner_id = ? AND name = ?) AS exists", userId, folderDTO.Name).
-		Scan(&exists).Error
+	err := db.
+		Model(&models.Folder{}).
+		Select("count(*) > 0").
+		Where("owner_id = ? AND name = ?", userId, folderDTO.Name).
+		Find(&exists).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking existing folder"})
 		return
@@ -55,7 +58,7 @@ func CreateFolder(c *gin.Context) {
 		OwnerID: userId,
 	}
 
-	if err := database.DB.Create(&folder).Error; err != nil {
+	if err := db.Create(&folder).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,6 +80,7 @@ func CreateFolder(c *gin.Context) {
 func GetFolder(c *gin.Context) {
 	folderId := c.Param("folderId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	type FolderWithAccess struct {
 		models.Folder
@@ -86,7 +90,7 @@ func GetFolder(c *gin.Context) {
 	var folder FolderWithAccess
 
 	// Truy vấn lấy folder và access (nếu có)
-	result := database.DB.
+	result := db.
 		Table("folders").
 		Select("folders.*, folder_shares.access AS access").
 		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
@@ -125,6 +129,7 @@ func GetFolder(c *gin.Context) {
 // @Router /folders [get]
 func GetFolders(c *gin.Context) {
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	type FolderWithAccess struct {
 		models.Folder
@@ -136,13 +141,13 @@ func GetFolders(c *gin.Context) {
 	var allFolders []FolderWithAccess
 
 	// Get owned folders
-	if err := database.DB.Where("owner_id = ?", userId).Find(&ownedFolders).Error; err != nil {
+	if err := db.Where("owner_id = ?", userId).Find(&ownedFolders).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve owned folders"})
 		return
 	}
 
 	// Get shared folders
-	if err := database.DB.Table("folders").
+	if err := db.Table("folders").
 		Select("folders.*, folder_shares.access").
 		Joins("INNER JOIN folder_shares ON folders.id = folder_shares.folder_id").
 		Where("folder_shares.user_id = ?", userId).
@@ -182,6 +187,7 @@ func GetFolders(c *gin.Context) {
 func UpdateFolder(c *gin.Context) {
 	folderId := c.Param("folderId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var folderDTO dto.FolderDTO
 	if err := c.ShouldBindJSON(&folderDTO); err != nil {
@@ -197,7 +203,7 @@ func UpdateFolder(c *gin.Context) {
 	var folder FolderWithAccess
 
 	// Truy vấn: lấy folder + quyền truy cập (nếu có)
-	result := database.DB.
+	result := db.
 		Table("folders").
 		Select("folders.*, folder_shares.access AS access").
 		Joins("LEFT JOIN folder_shares ON folders.id = folder_shares.folder_id AND folder_shares.user_id = ?", userId).
@@ -220,7 +226,7 @@ func UpdateFolder(c *gin.Context) {
 
 	// Cập nhật tên folder
 	folder.Name = folderDTO.Name
-	if err := database.DB.Save(&folder.Folder).Error; err != nil {
+	if err := db.Save(&folder.Folder).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update folder"})
 		return
 	}
@@ -244,9 +250,10 @@ func UpdateFolder(c *gin.Context) {
 func DeleteFolder(c *gin.Context) {
 	folderId := c.Param("folderId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var folder models.Folder
-	result := database.DB.First(&folder, "id = ?", folderId)
+	result := db.First(&folder, "id = ?", folderId)
 	if result.Error != nil {
 		logger.Warn("Folder not found", "folderId", folderId, "userId", userId, "error", result.Error)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
@@ -259,7 +266,7 @@ func DeleteFolder(c *gin.Context) {
 		return
 	}
 
-	tx := database.DB.Begin()
+	tx := db.Begin()
 
 	// Lấy tất cả note ID trong folder
 	var noteIDs []string

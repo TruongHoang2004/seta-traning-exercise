@@ -31,10 +31,11 @@ func ShareFolder(c *gin.Context) {
 
 	folderId := c.Param("folderId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	// Check ownership
 	var folder models.Folder
-	if err := database.DB.Where("id = ? AND owner_id = ?", folderId, userId).First(&folder).Error; err != nil {
+	if err := db.Where("id = ? AND owner_id = ?", folderId, userId).First(&folder).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to share this folder"})
 		return
 	}
@@ -47,16 +48,16 @@ func ShareFolder(c *gin.Context) {
 	}
 	// Check if the share already exists
 	var existingShare models.FolderShare
-	if err := database.DB.Where("folder_id = ? AND user_id = ?", folder.ID, body.UserID).First(&existingShare).Error; err == nil {
+	if err := db.Where("folder_id = ? AND user_id = ?", folder.ID, body.UserID).First(&existingShare).Error; err == nil {
 		// Update existing share if it exists
 		existingShare.Access = body.AccessRole
-		if err := database.DB.Save(&existingShare).Error; err != nil {
+		if err := db.Save(&existingShare).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	} else {
 		// Create new share if it doesn't exist
-		if err := database.DB.Create(&share).Error; err != nil {
+		if err := db.Create(&share).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -80,14 +81,15 @@ func RevokeFolderShare(c *gin.Context) {
 	folderId := c.Param("folderId")
 	sharedUserId := c.Param("userId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var folder models.Folder
-	if err := database.DB.Where("id = ? AND owner_id = ?", folderId, userId).First(&folder).Error; err != nil {
+	if err := db.Where("id = ? AND owner_id = ?", folderId, userId).First(&folder).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to revoke sharing of this folder"})
 		return
 	}
 
-	if err := database.DB.Where("folder_id = ? AND user_id = ?", folderId, sharedUserId).Delete(&models.FolderShare{}).Error; err != nil {
+	if err := db.Where("folder_id = ? AND user_id = ?", folderId, sharedUserId).Delete(&models.FolderShare{}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -108,6 +110,8 @@ func RevokeFolderShare(c *gin.Context) {
 // @Failure 403,404,500 {object} map[string]interface{} "Error response"
 // @Router /notes/{noteId}/share [post]
 func ShareNote(c *gin.Context) {
+	db := database.DB.WithContext(c.Request.Context())
+
 	var body dto.ShareDTO
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -126,7 +130,7 @@ func ShareNote(c *gin.Context) {
 	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var note models.Note
-	if err := database.DB.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to share this note"})
 		return
 	}
@@ -136,7 +140,7 @@ func ShareNote(c *gin.Context) {
 		UserID: body.UserID,
 		Access: body.AccessRole,
 	}
-	if err := database.DB.Create(&share).Error; err != nil {
+	if err := db.Create(&share).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -159,14 +163,15 @@ func RevokeNoteShare(c *gin.Context) {
 	noteId := c.Param("noteId")
 	sharedUserId := c.Param("userId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var note models.Note
-	if err := database.DB.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", noteId, userId).First(&note).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to revoke sharing of this note"})
 		return
 	}
 
-	if err := database.DB.Where("note_id = ? AND user_id = ?", noteId, sharedUserId).Delete(&models.NoteShare{}).Error; err != nil {
+	if err := db.Where("note_id = ? AND user_id = ?", noteId, sharedUserId).Delete(&models.NoteShare{}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

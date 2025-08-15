@@ -26,6 +26,7 @@ import (
 // @Router /notes [post]
 func CreateNote(c *gin.Context) {
 	var noteDTO dto.CreateNoteDTO
+	db := database.DB.WithContext(c.Request.Context())
 
 	if err := c.ShouldBindJSON(&noteDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -35,7 +36,7 @@ func CreateNote(c *gin.Context) {
 	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var exists bool
-	err := database.DB.
+	err := db.
 		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE id = ? AND owner_id = ?) AS exists", noteDTO.FolderID, userId).
 		Scan(&exists).Error
 	if err != nil {
@@ -54,7 +55,7 @@ func CreateNote(c *gin.Context) {
 		OwnerID:  userId,
 	}
 
-	if err := database.DB.Create(&note).Error; err != nil {
+	if err := db.Create(&note).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -73,6 +74,7 @@ func CreateNote(c *gin.Context) {
 // @Router /notes [get]
 func GetNotes(c *gin.Context) {
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	type NoteWithAccess struct {
 		models.Note
@@ -81,7 +83,7 @@ func GetNotes(c *gin.Context) {
 
 	var notes []NoteWithAccess
 
-	result := database.DB.
+	result := db.
 		Table("notes").
 		Select("notes.*, COALESCE(note_shares.access, folder_shares.access) as access").
 		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id AND note_shares.user_id = ?", userId).
@@ -111,6 +113,7 @@ func GetNotes(c *gin.Context) {
 func GetNote(c *gin.Context) {
 	noteId := c.Param("noteId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	type NoteWithAccess struct {
 		models.Note
@@ -120,7 +123,7 @@ func GetNote(c *gin.Context) {
 
 	var note NoteWithAccess
 
-	result := database.DB.
+	result := db.
 		Table("notes").
 		Select("notes.*, note_shares.access as access, users.id as user_exists").
 		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id AND note_shares.user_id = ?", userId).
@@ -165,6 +168,7 @@ func GetNote(c *gin.Context) {
 func UpdateNote(c *gin.Context) {
 	noteId := c.Param("noteId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var noteDTO dto.UpdateNoteDTO
 	if err := c.ShouldBindJSON(&noteDTO); err != nil {
@@ -179,7 +183,7 @@ func UpdateNote(c *gin.Context) {
 
 	var note NoteWithAccess
 
-	result := database.DB.
+	result := db.
 		Table("notes").
 		Select("notes.*, COALESCE(note_shares.access, folder_shares.access) AS access").
 		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id AND note_shares.user_id = ?", userId).
@@ -212,7 +216,7 @@ func UpdateNote(c *gin.Context) {
 	note.Title = noteDTO.Title
 	note.Body = noteDTO.Body
 
-	if err := database.DB.Model(&models.Note{}).Where("id = ?", note.ID).Updates(map[string]interface{}{
+	if err := db.Model(&models.Note{}).Where("id = ?", note.ID).Updates(map[string]interface{}{
 		"title": note.Title,
 		"body":  note.Body,
 	}).Error; err != nil {
@@ -237,9 +241,10 @@ func UpdateNote(c *gin.Context) {
 func DeleteNote(c *gin.Context) {
 	noteId := c.Param("noteId")
 	userId, _ := middleware.GetUserInfoFromGin(c)
+	db := database.DB.WithContext(c.Request.Context())
 
 	var note models.Note
-	result := database.DB.First(&note, "id = ?", noteId)
+	result := db.First(&note, "id = ?", noteId)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
 		return
@@ -250,7 +255,7 @@ func DeleteNote(c *gin.Context) {
 		return
 	}
 
-	tx := database.DB.Begin()
+	tx := db.Begin()
 
 	if err := tx.Where("note_id = ?", noteId).Delete(&models.NoteShare{}).Error; err != nil {
 		tx.Rollback()

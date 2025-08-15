@@ -38,6 +38,12 @@ func Connect() {
 		log.Fatal("Failed to get SQL DB object:", err)
 	}
 
+	// Ping the database to ensure the connection is valid
+	if err := sqlDB.Ping(); err != nil {
+		log.Fatal("Failed to ping database:", err)
+	}
+	log.Println("Database connection verified with ping")
+
 	// Set connection pool settings
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)

@@ -1,0 +1,9 @@
+query GetUsers($role: UserType, $userIds: [ID!]) {
+  users(role: $role, userIds: $userIds) {
+    userId
+    username
+    email
+    role
+    createdAt
+  }
+}
