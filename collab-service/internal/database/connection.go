@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// avoid use global variable
 var DB *gorm.DB
 
 func Connect() {

@@ -47,6 +47,7 @@ func GetTeamAssets(c *gin.Context) {
 	db.Joins("JOIN folder_shares ON folders.id = folder_shares.folder_id").
 		Where("folder_shares.user_id IN ?", userIDs).Find(&sharedFolders)
 
+	// create dto response
 	c.JSON(http.StatusOK, gin.H{
 		"owned_folders":  folders,
 		"shared_folders": sharedFolders,

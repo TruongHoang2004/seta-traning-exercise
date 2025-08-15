@@ -36,6 +36,7 @@ func CreateNote(c *gin.Context) {
 	userId, _ := middleware.GetUserInfoFromGin(c)
 
 	var exists bool
+	// avoid this, use gorm instead
 	err := db.
 		Raw("SELECT EXISTS (SELECT 1 FROM folders WHERE id = ? AND owner_id = ?) AS exists", noteDTO.FolderID, userId).
 		Scan(&exists).Error
@@ -200,6 +201,7 @@ func UpdateNote(c *gin.Context) {
 		First(&note)
 
 	if result.Error != nil {
+		// custom error when response
 		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found or access denied"})
 		return
 	}

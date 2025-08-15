@@ -26,6 +26,9 @@ import (
 // @Failure 404 {object} object "User not found"
 // @Failure 500 {object} object "Internal server error"
 // @Router /folders [post]
+// use method for this, and inject db to handler so we can avoid use global database.DB
+// example:
+// func (h *Handler) CreateFolder(c *gin.Context) {
 func CreateFolder(c *gin.Context) {
 	var folderDTO dto.FolderDTO
 	db := database.DB.WithContext(c.Request.Context())
