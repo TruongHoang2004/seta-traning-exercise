@@ -1,0 +1,463 @@
+basePath: /api/v1
+definitions:
+  dto.AddMembersRequest:
+    properties:
+      memberIds:
+        items:
+          type: string
+        type: array
+      teamId:
+        type: string
+    required:
+    - memberIds
+    - teamId
+    type: object
+  dto.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateNoteRequest:
+    properties:
+      body:
+        type: string
+      folder_id:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.CreateTeamRequest:
+    properties:
+      managers:
+        items:
+          type: string
+        type: array
+      members:
+        items:
+          type: string
+        type: array
+      teamName:
+        type: string
+    required:
+    - teamName
+    type: object
+  dto.RemoveMemberRequest:
+    properties:
+      memberId:
+        type: string
+      teamId:
+        type: string
+    required:
+    - memberId
+    - teamId
+    type: object
+  dto.TeamResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      rosters:
+        items:
+          $ref: '#/definitions/entity.Roster'
+        type: array
+      teamName:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.UpdateFolderRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - id
+    - name
+    type: object
+  dto.UpdateNoteRequest:
+    properties:
+      body:
+        type: string
+      folder_id:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.UpdateTeamRequest:
+    properties:
+      team:
+        $ref: '#/definitions/entity.Team'
+    required:
+    - team
+    type: object
+  entity.Roster:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      role:
+        $ref: '#/definitions/entity.TeamAccessRole'
+      team:
+        $ref: '#/definitions/entity.Team'
+      teamID:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+    type: object
+  entity.Team:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      rosters:
+        items:
+          $ref: '#/definitions/entity.Roster'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  entity.TeamAccessRole:
+    enum:
+    - OWNER
+    - MANAGER
+    - MEMBER
+    type: string
+    x-enum-varnames:
+    - TeamOwner
+    - TeamManager
+    - TeamMember
+host: localhost:8080
+info:
+  contact: {}
+  description: API for managing collaborations and shared resources
+  title: Collaboration Service API
+  version: "1.0"
+paths:
+  /folders:
+    get:
+      description: Get all folders that the user has access to
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get all folders that the user can access
+      tags:
+      - folders
+    post:
+      consumes:
+      - application/json
+      description: Create a new folder with the given name
+      parameters:
+      - description: Folder creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateFolderRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create a new folder
+      tags:
+      - folders
+    put:
+      consumes:
+      - application/json
+      description: Update a folder with the given ID and new name
+      parameters:
+      - description: Folder update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFolderRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update a folder
+      tags:
+      - folders
+  /folders/{id}:
+    delete:
+      description: Delete a folder by its unique ID
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a folder
+      tags:
+      - folders
+    get:
+      description: Get a folder by its unique ID
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get a folder by ID
+      tags:
+      - folders
+  /notes:
+    get:
+      description: Get all notes that the user has access to
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get all notes
+      tags:
+      - notes
+    post:
+      consumes:
+      - application/json
+      description: Creates a new note with the given details
+      parameters:
+      - description: Note details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateNoteRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create a new note
+      tags:
+      - notes
+  /notes/{id}:
+    delete:
+      description: Delete a note by its unique ID
+      parameters:
+      - description: Note ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a note
+      tags:
+      - notes
+    get:
+      description: Get a note by its unique ID
+      parameters:
+      - description: Note ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get a note by ID
+      tags:
+      - notes
+    put:
+      consumes:
+      - application/json
+      description: Update a note by its unique ID
+      parameters:
+      - description: Note ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Note details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateNoteRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update a note
+      tags:
+      - notes
+  /teams:
+    get:
+      description: Get all teams that the current user is a member of
+      responses:
+        "200":
+          description: List of teams
+          schema:
+            items:
+              $ref: '#/definitions/dto.TeamResponse'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all teams of the current user
+      tags:
+      - teams
+    post:
+      consumes:
+      - application/json
+      description: Create a new team with the given name and members
+      parameters:
+      - description: Team creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTeamRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create a new team
+      tags:
+      - teams
+  /teams/{teamId}:
+    delete:
+      description: Delete an existing team
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a team
+      tags:
+      - teams
+    get:
+      description: Get team details by ID
+      parameters:
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Team details
+          schema:
+            $ref: '#/definitions/entity.Team'
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+        "404":
+          description: Team not found
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get team by ID
+      tags:
+      - teams
+    put:
+      consumes:
+      - application/json
+      description: Update an existing team
+      parameters:
+      - description: Update team request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTeamRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update a team
+      tags:
+      - teams
+  /teams/{teamId}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add new members to an existing team
+      parameters:
+      - description: Add members request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddMembersRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Add members to a team
+      tags:
+      - teams
+  /teams/{teamId}/members/{memberId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a member from an existing team
+      parameters:
+      - description: Remove member request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RemoveMemberRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Remove a member from a team
+      tags:
+      - teams
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

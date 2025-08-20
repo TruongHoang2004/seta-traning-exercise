@@ -10,14 +10,29 @@ import (
 const metadataTTL = 5 * time.Minute
 
 // Team members cache
-func GetTeamMembers(ctx context.Context, teamID string) ([]string, error) {
-	return Rdb.SMembers(ctx, "team:"+teamID+":members").Result()
-}
 func AddTeamMember(ctx context.Context, teamID, userID string) error {
-	return Rdb.SAdd(ctx, "team:"+teamID+":members", userID).Err()
+	key := "team:" + teamID + ":members"
+	err := Rdb.SAdd(ctx, key, userID).Err()
+	if err != nil {
+		return err
+	}
+	// Đặt TTL
+	return Rdb.Expire(ctx, key, time.Hour).Err()
 }
+
 func RemoveTeamMember(ctx context.Context, teamID, userID string) error {
-	return Rdb.SRem(ctx, "team:"+teamID+":members", userID).Err()
+	key := "team:" + teamID + ":members"
+	err := Rdb.SRem(ctx, key, userID).Err()
+	if err != nil {
+		return err
+	}
+	// Reset lại TTL (tùy chiến lược)
+	return Rdb.Expire(ctx, key, time.Hour).Err()
+}
+
+func GetTeamMembers(ctx context.Context, teamID string) ([]string, error) {
+	key := "team:" + teamID + ":members"
+	return Rdb.SMembers(ctx, key).Result()
 }
 
 // Folder / Note metadata cache

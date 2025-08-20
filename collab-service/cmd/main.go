@@ -2,10 +2,9 @@ package main
 
 import (
 	"collab-service/config"
-	"collab-service/internal/database"
-	"collab-service/internal/routes"
-	"collab-service/pkg/cache"
-	"collab-service/pkg/logger"
+	"collab-service/internal/infrastructure/database"
+	"collab-service/internal/infrastructure/logger"
+	httpHandler "collab-service/internal/interface/http"
 	"context"
 	"fmt"
 	"net/http"
@@ -18,6 +17,16 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// @title           Collaboration Service API
+// @version         1.0
+// @description     API for managing collaborations and shared resources
+// @host            localhost:8080
+// @BasePath        /api/v1
+// @schemes         http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token
 func main() {
 	// Load env
 	config.LoadEnv()
@@ -36,10 +45,10 @@ func main() {
 	// Connect DB + Redis
 	database.Connect()
 	defer database.Close()
-	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
+	// cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
 
 	// Setup routes
-	router := routes.SetupRoutes()
+	router := httpHandler.SetupRoutes()
 
 	// Create HTTP server manually (so we can shut it down)
 	srv := &http.Server{

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"collab-service/pkg/logger"
+	"collab-service/internal/infrastructure/logger"
 	"log"
 	"os"
 
