@@ -99,13 +99,16 @@ func (c *GraphQLClient) GetUser(ctx context.Context, userID uuid.UUID) (*entity.
 	return resp.User.ToDomain(), err
 }
 
-func (c *GraphQLClient) CreateUser(input CreateUserInput) (*UserMutationResponse, error) {
+func (c *GraphQLClient) CreateUser(ctx context.Context, input CreateUserInput) (*UserMutationResponse, error) {
 	req := graphql.NewRequest(queries.CreateUser)
 	req.Var("input", input)
 	var resp struct {
 		CreateUser UserMutationResponse `json:"createUser"`
 	}
-	err := c.doRequest(req, &resp)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	err := c.client.Run(ctx, req, &resp)
 	return &resp.CreateUser, err
 }
 

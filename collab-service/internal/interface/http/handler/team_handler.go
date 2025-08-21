@@ -41,12 +41,7 @@ func (h *TeamHandler) CreateTeam(c *gin.Context) {
 		return
 	}
 
-	var response dto.TeamResponse
-	response.ID = team.ID
-	response.TeamName = team.Name
-	response.Rosters = team.Rosters
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, dto.ToResponse(team))
 }
 
 // @Security BearerAuth
@@ -80,12 +75,7 @@ func (h *TeamHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	var response dto.TeamResponse
-	response.ID = team.ID
-	response.TeamName = team.Name
-	response.Rosters = team.Rosters
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, dto.ToResponse(team))
 }
 
 // @Security BearerAuth
@@ -104,11 +94,7 @@ func (h *TeamHandler) GetAllByUserID(c *gin.Context) {
 
 	var response []dto.TeamResponse
 	for _, team := range teams {
-		response = append(response, dto.TeamResponse{
-			ID:       team.ID,
-			TeamName: team.Name,
-			Rosters:  team.Rosters,
-		})
+		response = append(response, *dto.ToResponse(team))
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -136,12 +122,7 @@ func (h *TeamHandler) AddMembers(c *gin.Context) {
 		return
 	}
 
-	var response dto.TeamResponse
-	response.ID = team.ID
-	response.TeamName = team.Name
-	response.Rosters = team.Rosters
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, dto.ToResponse(team))
 }
 
 func (h *TeamHandler) AddManager(c *gin.Context) {
@@ -158,10 +139,7 @@ func (h *TeamHandler) AddManager(c *gin.Context) {
 		return
 	}
 
-	var response dto.TeamResponse
-	response.ID = team.ID
-	response.TeamName = team.Name
-	response.Rosters = team.Rosters
+	response := dto.ToResponse(team)
 
 	c.JSON(http.StatusOK, response)
 }
@@ -228,12 +206,7 @@ func (h *TeamHandler) UpdateTeam(c *gin.Context) {
 		return
 	}
 
-	var response dto.TeamResponse
-	response.ID = team.ID
-	response.TeamName = team.Name
-	response.Rosters = team.Rosters
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, dto.ToResponse(team))
 }
 
 // @Security BearerAuth

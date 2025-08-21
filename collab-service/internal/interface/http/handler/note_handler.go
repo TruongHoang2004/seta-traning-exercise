@@ -193,11 +193,11 @@ func (h *NoteHandler) Update(c *gin.Context) {
 // @Description Delete a note by its unique ID
 // @Tags notes
 // @Produce json
-// @Param id path string true "Note ID"
-// @Router /notes/{id} [delete]
+// @Param noteID path string true "Note ID"
+// @Router /notes/{noteID} [delete]
 func (h *NoteHandler) Delete(c *gin.Context) {
-	id := c.Param("id")
-	parsedID, err := uuid.Parse(id)
+	noteID := c.Param("noteID")
+	parsedID, err := uuid.Parse(noteID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

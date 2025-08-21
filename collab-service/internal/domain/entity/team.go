@@ -33,6 +33,7 @@ func (t *Team) AddRoster(roster Roster) {
 
 type TeamRepository interface {
 	Create(ctx context.Context, team *Team) (*Team, error)
+	ExistsByID(ctx context.Context, id uuid.UUID) (bool, error)
 	GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*Team, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Team, error)
 	GetRole(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (TeamAccessRole, error)

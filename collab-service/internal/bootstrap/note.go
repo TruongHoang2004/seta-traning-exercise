@@ -4,6 +4,7 @@ import (
 	"collab-service/internal/application"
 	"collab-service/internal/infrastructure/persistence"
 	"collab-service/internal/interface/http/handler"
+	"collab-service/internal/interface/http/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -14,11 +15,15 @@ func InitNoteModule(r *gin.Engine, db *gorm.DB) {
 	noteService := application.NewNoteService(noteRepo)
 	noteHandler := handler.NewNoteHandler(noteService)
 
-	r.POST("/notes", noteHandler.Create)
-	r.GET("/notes/:id", noteHandler.GetByID)
-	r.GET("/notes", noteHandler.GetAll)
-	r.PUT("/notes/:id", noteHandler.Update)
-	r.DELETE("/notes/:id", noteHandler.Delete)
-	r.POST("/notes/:noteID/share", noteHandler.ShareNote)
-	r.DELETE("/notes/:noteID/share/:userID", noteHandler.RevokeAccess)
+	noteRoutes := r.Group("/notes")
+	noteRoutes.Use(middleware.AuthMiddleware())
+	{
+		noteRoutes.POST("", noteHandler.Create)
+		noteRoutes.GET("/:id", noteHandler.GetByID)
+		noteRoutes.GET("", noteHandler.GetAll)
+		noteRoutes.PUT("/:id", noteHandler.Update)
+		noteRoutes.DELETE("/:noteID", noteHandler.Delete)
+		noteRoutes.POST("/:noteID/shares", noteHandler.ShareNote)
+		noteRoutes.DELETE("/:noteID/shares/:userID", noteHandler.RevokeAccess)
+	}
 }

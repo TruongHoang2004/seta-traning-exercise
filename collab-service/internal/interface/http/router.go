@@ -27,6 +27,8 @@ func SetupRoutes() *gin.Engine {
 	bootstrap.InitTeamModule(router, database.GetDB())
 	bootstrap.InitFolderModule(router, database.GetDB())
 	bootstrap.InitNoteModule(router, database.GetDB())
+	bootstrap.InitManagerModule(router, database.GetDB())
+	bootstrap.InitUserModule(router)
 
 	// Redirect root to /api path
 	router.GET("/", func(c *gin.Context) {

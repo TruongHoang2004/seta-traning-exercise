@@ -45,14 +45,41 @@ type RosterID struct {
 
 // TeamResponse represents the response payload for team operations
 type TeamResponse struct {
-	ID        uuid.UUID       `json:"id"`
-	TeamName  string          `json:"teamName"`
-	Rosters   []entity.Roster `json:"rosters,omitempty"`
-	CreatedAt time.Time       `json:"createdAt"`
-	UpdatedAt time.Time       `json:"updatedAt"`
+	ID        uuid.UUID        `json:"id"`
+	TeamName  string           `json:"teamName"`
+	Rosters   []RosterResponse `json:"rosters,omitempty"`
+	CreatedAt time.Time        `json:"createdAt"`
+	UpdatedAt time.Time        `json:"updatedAt"`
+}
+
+type RosterResponse struct {
+	UserID uuid.UUID             `json:"userId"`
+	Role   entity.TeamAccessRole `json:"role"`
 }
 
 // TeamListResponse represents a list of teams
 type TeamListResponse struct {
 	Teams []TeamResponse `json:"teams"`
+}
+
+func ToResponse(team *entity.Team) *TeamResponse {
+	if team == nil {
+		return nil
+	}
+
+	rosterResponses := make([]RosterResponse, len(team.Rosters))
+	for i, r := range team.Rosters {
+		rosterResponses[i] = RosterResponse{
+			UserID: r.UserID,
+			Role:   r.Role,
+		}
+	}
+
+	return &TeamResponse{
+		ID:        team.ID,
+		TeamName:  team.Name,
+		Rosters:   rosterResponses,
+		CreatedAt: team.CreatedAt,
+		UpdatedAt: team.UpdatedAt,
+	}
 }

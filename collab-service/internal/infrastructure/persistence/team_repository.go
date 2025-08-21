@@ -18,6 +18,17 @@ type TeamModel struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
+type CachedMember struct {
+	UserID uuid.UUID             `json:"user_id"`
+	Role   entity.TeamAccessRole `json:"role"`
+}
+
+type CachedTeam struct {
+	ID      uuid.UUID      `json:"id"`
+	Name    string         `json:"name"`
+	Members []CachedMember `json:"members"`
+}
+
 func (TeamModel) TableName() string {
 	return "teams"
 }
@@ -102,6 +113,14 @@ func (r *TeamRepositoryImpl) GetAllByUserID(ctx context.Context, userID uuid.UUI
 		teams[i] = m.ToDomain()
 	}
 	return teams, nil
+}
+
+func (r *TeamRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&TeamModel{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // GetByID implements entity.TeamRepository

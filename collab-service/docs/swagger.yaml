@@ -53,6 +53,23 @@ definitions:
     - memberId
     - teamId
     type: object
+  dto.ShareFolderRequest:
+    properties:
+      access_level:
+        $ref: '#/definitions/entity.AccessLevel'
+      user_id:
+        type: string
+    required:
+    - access_level
+    - user_id
+    type: object
+  dto.ShareNoteRequest:
+    properties:
+      access_level:
+        $ref: '#/definitions/entity.AccessLevel'
+      user_id:
+        type: string
+    type: object
   dto.TeamResponse:
     properties:
       createdAt:
@@ -94,6 +111,18 @@ definitions:
     required:
     - team
     type: object
+  entity.AccessLevel:
+    enum:
+    - OWNER
+    - READ
+    - WRITE
+    - NONE
+    type: string
+    x-enum-varnames:
+    - AccessLevelOwner
+    - AccessLevelRead
+    - AccessLevelWrite
+    - AccessLevelNone
   entity.Roster:
     properties:
       createdAt:
@@ -192,13 +221,13 @@ paths:
       summary: Update a folder
       tags:
       - folders
-  /folders/{id}:
+  /folders/{folderID}:
     delete:
       description: Delete a folder by its unique ID
       parameters:
       - description: Folder ID
         in: path
-        name: id
+        name: folderID
         required: true
         type: string
       produces:
@@ -209,6 +238,54 @@ paths:
       summary: Delete a folder
       tags:
       - folders
+  /folders/{folderID}/share:
+    post:
+      consumes:
+      - application/json
+      description: Share a folder with a user by their ID and set access level
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Folder sharing request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShareFolderRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Share a folder with a user
+      tags:
+      - folders
+  /folders/{folderID}/share/{userID}:
+    delete:
+      description: Unshare a folder with a user by their ID
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Unshare a folder with a user
+      tags:
+      - folders
+  /folders/{id}:
     get:
       description: Get a folder by its unique ID
       parameters:
@@ -256,22 +333,6 @@ paths:
       tags:
       - notes
   /notes/{id}:
-    delete:
-      description: Delete a note by its unique ID
-      parameters:
-      - description: Note ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - BearerAuth: []
-      summary: Delete a note
-      tags:
-      - notes
     get:
       description: Get a note by its unique ID
       parameters:
@@ -312,6 +373,57 @@ paths:
       summary: Update a note
       tags:
       - notes
+  /notes/{noteID}:
+    delete:
+      description: Delete a note by its unique ID
+      parameters:
+      - description: Note ID
+        in: path
+        name: noteID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete a note
+      tags:
+      - notes
+  /notes/{noteID}/share:
+    post:
+      consumes:
+      - application/json
+      description: Share a note with another user by ID and access level
+      parameters:
+      - description: Note ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Share note details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShareNoteRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Share a note with another user
+      tags:
+      - notes
+  /notes/{noteId}/share/{userId}:
+    delete:
+      description: Revoke access to a note for a specific user
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Revoke access to a note
+      tags:
+      - notes
   /teams:
     get:
       description: Get all teams that the current user is a member of
@@ -350,6 +462,26 @@ paths:
       summary: Create a new team
       tags:
       - teams
+  /teams/:teamId/assets:
+    get:
+      consumes:
+      - application/json
+      description: Returns all assets that team members own or can access
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get all assets of a team
+      tags:
+      - teams
+      - assets
   /teams/{teamId}:
     delete:
       description: Delete an existing team
@@ -452,6 +584,45 @@ paths:
       summary: Remove a member from a team
       tags:
       - teams
+  /users/:userId/assets:
+    get:
+      consumes:
+      - application/json
+      description: Returns all assets owned by or shared with user
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get all assets of a user
+      tags:
+      - users
+      - assets
+  /users/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Import multiple users from a CSV file
+      parameters:
+      - description: CSV file containing user data
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Import users from CSV
+      tags:
+      - users
 schemes:
 - http
 securityDefinitions:

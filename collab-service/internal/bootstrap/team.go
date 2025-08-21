@@ -15,6 +15,7 @@ import (
 func InitTeamModule(r *gin.Engine, db *gorm.DB) {
 	client := user_service.NewGraphQLClient(config.GetConfig().UserServiceEndpoint)
 
+	// cacheService := cache.NewCacheService(rdb)
 	teamRepo := persistence.NewTeamRepository(db)
 	userRepo := user_service.NewUserRepository(client)
 

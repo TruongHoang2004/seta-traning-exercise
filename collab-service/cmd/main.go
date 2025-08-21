@@ -5,6 +5,7 @@ import (
 	"collab-service/internal/infrastructure/database"
 	"collab-service/internal/infrastructure/logger"
 	httpHandler "collab-service/internal/interface/http"
+	"collab-service/pkg/cache"
 	"context"
 	"fmt"
 	"net/http"
@@ -45,7 +46,9 @@ func main() {
 	// Connect DB + Redis
 	database.Connect()
 	defer database.Close()
-	// cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
+
+	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
+	defer cache.CloseRedis()
 
 	// Setup routes
 	router := httpHandler.SetupRoutes()

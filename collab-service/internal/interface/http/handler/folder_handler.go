@@ -137,12 +137,12 @@ func (h *FolderHandler) Update(c *gin.Context) {
 // @Description Delete a folder by its unique ID
 // @Tags folders
 // @Produce json
-// @Param id path string true "Folder ID"
-// @Router /folders/{id} [delete]
+// @Param folderID path string true "Folder ID"
+// @Router /folders/{folderID} [delete]
 func (h *FolderHandler) Delete(c *gin.Context) {
-	id := c.Param("id")
+	folderID := c.Param("folderID")
 
-	if err := h.folderService.Delete(c, uuid.MustParse(id)); err != nil {
+	if err := h.folderService.Delete(c, uuid.MustParse(folderID)); err != nil {
 		application.HandleError(c, err)
 		return
 	}

@@ -3,6 +3,7 @@ package user_service
 import (
 	"collab-service/internal/domain/entity"
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,13 +51,78 @@ type UserRepositoryImpl struct {
 }
 
 // Create implements entity.UserRepository.
-func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User) (*entity.User, error) {
-	panic("unimplemented")
+func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User, password string) (*entity.User, error) {
+	input := CreateUserInput{
+		Username: user.Username,
+		Email:    user.Email,
+		Password: password,
+		Role:     user.Role,
+	}
+
+	createdUser, err := u.client.CreateUser(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdUser.User.ToDomain(), nil
+}
+
+func (u *UserRepositoryImpl) CreateMany(ctx context.Context, users []*entity.User, password string) ([]*entity.User, []error) {
+	var wg sync.WaitGroup
+	usersChan := make(chan *entity.User, len(users))
+	errorsChan := make(chan error, len(users))
+
+	for _, user := range users {
+		wg.Add(1)
+		go func(user *entity.User) {
+			defer wg.Done()
+			createdUser, err := u.Create(ctx, user, password)
+			if err != nil {
+				errorsChan <- err
+				return
+			}
+			usersChan <- createdUser
+		}(user)
+	}
+
+	// Close channels when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(usersChan)
+		close(errorsChan)
+	}()
+
+	// Collect results and errors
+	var createdUsers []*entity.User
+	var errors []error
+
+	// Collect all users first
+	for user := range usersChan {
+		createdUsers = append(createdUsers, user)
+	}
+
+	// Then collect all errors
+	for err := range errorsChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	return createdUsers, errors
 }
 
 // Delete implements entity.UserRepository.
 func (u *UserRepositoryImpl) Delete(ctx context.Context, id string) error {
 	panic("unimplemented")
+}
+
+func (u *UserRepositoryImpl) ExistsByID(ctx context.Context, id uuid.UUID) (bool, error) {
+	// ExistsByID checks if a user with the given ID exists
+	user, err := u.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return user != nil, nil
 }
 
 // GetByID implements entity.UserRepository.

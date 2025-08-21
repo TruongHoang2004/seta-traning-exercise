@@ -93,6 +93,106 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/folders/{folderID}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a folder by its unique ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Delete a folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/folders/{folderID}/share": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Share a folder with a user by their ID and set access level",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Share a folder with a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Folder sharing request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ShareFolderRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/folders/{folderID}/share/{userID}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Unshare a folder with a user by their ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Unshare a folder with a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/folders/{id}": {
             "get": {
                 "security": [
@@ -108,31 +208,6 @@ const docTemplate = `{
                     "folders"
                 ],
                 "summary": "Get a folder by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a folder by its unique ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Delete a folder",
                 "parameters": [
                     {
                         "type": "string",
@@ -255,7 +330,9 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {}
-            },
+            }
+        },
+        "/notes/{noteID}": {
             "delete": {
                 "security": [
                     {
@@ -274,11 +351,65 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Note ID",
-                        "name": "id",
+                        "name": "noteID",
                         "in": "path",
                         "required": true
                     }
                 ],
+                "responses": {}
+            }
+        },
+        "/notes/{noteID}/share": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Share a note with another user by ID and access level",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notes"
+                ],
+                "summary": "Share a note with another user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Note ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Share note details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ShareNoteRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/notes/{noteId}/share/{userId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revoke access to a note for a specific user",
+                "tags": [
+                    "notes"
+                ],
+                "summary": "Revoke access to a note",
                 "responses": {}
             }
         },
@@ -338,6 +469,37 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.CreateTeamRequest"
                         }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/teams/:teamId/assets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all assets that team members own or can access",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teams",
+                    "assets"
+                ],
+                "summary": "Get all assets of a team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {}
@@ -504,6 +666,67 @@ const docTemplate = `{
                 ],
                 "responses": {}
             }
+        },
+        "/users/:userId/assets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all assets owned by or shared with user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users",
+                    "assets"
+                ],
+                "summary": "Get all assets of a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/users/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Import multiple users from a CSV file",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Import users from CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file containing user data",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
         }
     },
     "definitions": {
@@ -588,6 +811,32 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ShareFolderRequest": {
+            "type": "object",
+            "required": [
+                "access_level",
+                "user_id"
+            ],
+            "properties": {
+                "access_level": {
+                    "$ref": "#/definitions/entity.AccessLevel"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ShareNoteRequest": {
+            "type": "object",
+            "properties": {
+                "access_level": {
+                    "$ref": "#/definitions/entity.AccessLevel"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.TeamResponse": {
             "type": "object",
             "properties": {
@@ -650,6 +899,21 @@ const docTemplate = `{
                     "$ref": "#/definitions/entity.Team"
                 }
             }
+        },
+        "entity.AccessLevel": {
+            "type": "string",
+            "enum": [
+                "OWNER",
+                "READ",
+                "WRITE",
+                "NONE"
+            ],
+            "x-enum-varnames": [
+                "AccessLevelOwner",
+                "AccessLevelRead",
+                "AccessLevelWrite",
+                "AccessLevelNone"
+            ]
         },
         "entity.Roster": {
             "type": "object",

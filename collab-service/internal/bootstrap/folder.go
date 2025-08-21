@@ -22,7 +22,7 @@ func InitFolderModule(r *gin.Engine, db *gorm.DB) {
 		group.GET("/:id", folderHandler.GetByID)
 		group.GET("/", folderHandler.GetAllCanAccess)
 		group.PUT("/:id", folderHandler.Update)
-		group.DELETE("/:id", folderHandler.Delete)
+		group.DELETE("/:folderID", folderHandler.Delete)
 		group.POST("/:folderID/share", folderHandler.ShareFolder)
 		group.DELETE("/:folderID/share/:userID", folderHandler.RevokeAccess)
 	}
