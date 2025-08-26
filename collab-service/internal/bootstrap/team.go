@@ -3,10 +3,12 @@ package bootstrap
 import (
 	"collab-service/config"
 	"collab-service/internal/application"
+	"collab-service/internal/infrastructure/cache"
 	"collab-service/internal/infrastructure/external/user_service"
 	"collab-service/internal/infrastructure/persistence"
 	"collab-service/internal/interface/http/handler"
 	"collab-service/internal/interface/http/middleware"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -17,9 +19,10 @@ func InitTeamModule(r *gin.Engine, db *gorm.DB) {
 
 	// cacheService := cache.NewCacheService(rdb)
 	teamRepo := persistence.NewTeamRepository(db)
+	teamRepoWithCache := cache.NewTeamRepositoryWithCache(teamRepo, cache.GetRedisClient(), time.Hour)
 	userRepo := user_service.NewUserRepository(client)
 
-	service := application.NewTeamService(teamRepo, userRepo)
+	service := application.NewTeamService(teamRepoWithCache, userRepo)
 	h := handler.NewTeamHandler(service)
 
 	group := r.Group("/api/teams")

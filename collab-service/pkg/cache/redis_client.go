@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -19,9 +20,13 @@ func InitRedis(addr, password string, db int) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
+	log.Println("Connecting to Redis...")
+
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		panic("Redis connect error: " + err.Error())
+		log.Fatal("Redis connect error: " + err.Error())
 	}
+
+	log.Println("Connected to Redis")
 
 }
 
