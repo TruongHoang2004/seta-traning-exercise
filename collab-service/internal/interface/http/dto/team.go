@@ -15,25 +15,8 @@ type CreateTeamRequest struct {
 }
 
 type AddMembersRequest struct {
-	TeamID    uuid.UUID   `json:"teamId" binding:"required"`
 	MemberIDs []uuid.UUID `json:"memberIds" binding:"required"`
 }
-
-type RemoveMemberRequest struct {
-	TeamID   uuid.UUID `json:"teamId" binding:"required"`
-	MemberID uuid.UUID `json:"memberId" binding:"required"`
-}
-
-type AddManagerRequest struct {
-	TeamID    uuid.UUID `json:"teamId" binding:"required"`
-	ManagerID uuid.UUID `json:"managerId" binding:"required"`
-}
-
-type RemoveManagerRequest struct {
-	TeamID    uuid.UUID `json:"teamId" binding:"required"`
-	ManagerID uuid.UUID `json:"managerId" binding:"required"`
-}
-
 type UpdateTeamRequest struct {
 	Team entity.Team `json:"team" binding:"required"`
 }

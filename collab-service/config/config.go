@@ -23,6 +23,9 @@ type Config struct {
 	LogFilePath         string
 	RedisAddress        string
 	RedisPassword       string
+	KafkaAddresses      []string
+	TeamActivityTopic   string
+	AssetChangeTopic    string
 }
 
 // LoadEnv loads environment variables from .env file
@@ -54,6 +57,9 @@ func GetConfig() Config {
 		LogFilePath:         GetEnv("LOG_FILE_PATH", "./logs/collab_service.log"),
 		RedisAddress:        GetEnv("REDIS_ADDRESS", "localhost:6379"),
 		RedisPassword:       GetEnv("REDIS_PASSWORD", ""),
+		KafkaAddresses:      []string{GetEnv("KAFKA_ADDRESS", "localhost:9092")},
+		TeamActivityTopic:   GetEnv("TEAM_ACTIVITY_TOPIC", "team-activity"),
+		AssetChangeTopic:    GetEnv("ASSET_CHANGE_TOPIC", "asset-change"),
 	}
 }
 

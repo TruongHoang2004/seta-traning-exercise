@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"collab-service/config"
 	"collab-service/internal/application"
-	"collab-service/internal/infrastructure/cache"
+	"collab-service/internal/infrastructure/external/cache"
 	"collab-service/internal/infrastructure/external/user_service"
 	"collab-service/internal/infrastructure/persistence"
 	"collab-service/internal/interface/http/handler"
@@ -31,12 +31,12 @@ func InitTeamModule(r *gin.Engine, db *gorm.DB) {
 		group.POST("", h.CreateTeam)
 		group.GET(":id", h.GetByID)
 		group.GET("", h.GetAllByUserID)
-		group.PUT("/teams/:teamId/members", h.AddMembers)
-		group.PUT("/teams/:teamId/managers/:managerId", h.AddManager)
-		group.DELETE("/teams/:teamId/members/:memberId", h.RemoveMember)
-		group.DELETE("/teams/:teamId/managers/:managerId", h.RemoveManager)
-		group.PUT("/teams/:teamId", h.UpdateTeam)
-		group.DELETE("/teams/:teamId", h.DeleteTeam)
+		group.PUT("/:teamId/members", h.AddMembers)
+		group.PUT("/:teamId/managers/:managerId", h.AddManager)
+		group.DELETE("/:teamId/members/:memberId", h.RemoveMember)
+		group.DELETE("/:teamId/managers/:managerId", h.RemoveManager)
+		group.PUT("/:teamId", h.UpdateTeam)
+		group.DELETE("/:teamId", h.DeleteTeam)
 	}
 
 }

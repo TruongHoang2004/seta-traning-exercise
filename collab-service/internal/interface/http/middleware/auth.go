@@ -5,7 +5,6 @@ import (
 	"collab-service/config"
 	"collab-service/internal/domain/entity"
 	"collab-service/internal/infrastructure/external/user_service"
-	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -24,15 +23,11 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		log.Println("Validating token:", tokenStr)
-
 		user, err := user_service.NewGraphQLClient(config.GetConfig().UserServiceEndpoint).ValidateToken(c.Request.Context(), tokenStr)
 		if err != nil {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
 			return
 		}
-
-		log.Println("User validated:", user.ID, user.Role)
 
 		// Giữ đúng kiểu dữ liệu
 		c.Set("userId", user.ID)

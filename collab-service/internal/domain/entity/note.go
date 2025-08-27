@@ -23,7 +23,8 @@ type Note struct {
 }
 
 type NoteRepository interface {
-	Create(ctx context.Context, note *Note, userID uuid.UUID) error
+	Create(ctx context.Context, note *Note, userID uuid.UUID) (*Note, error)
+	GetOwner(ctx context.Context, noteID uuid.UUID) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Note, error)
 	GetByFolderID(ctx context.Context, folderID uuid.UUID) ([]*Note, error)
 	GetAllCanAccess(ctx context.Context, userID uuid.UUID) ([]*Note, error)

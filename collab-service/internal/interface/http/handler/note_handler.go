@@ -43,12 +43,12 @@ func (h *NoteHandler) Create(c *gin.Context) {
 		FolderID: req.FolderID,
 	}
 
-	if err := h.NoteService.Create(c, note); err != nil {
+	savedNote, err := h.NoteService.Create(c, note)
+	if err != nil {
 		application.HandleError(c, err)
-		return
 	}
 
-	c.JSON(http.StatusCreated, note)
+	c.JSON(http.StatusCreated, savedNote)
 }
 
 // @Security BearerAuth
@@ -208,5 +208,5 @@ func (h *NoteHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, "Success")
 }

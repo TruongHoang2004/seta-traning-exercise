@@ -11,8 +11,7 @@ type CreateFolderRequest struct {
 }
 
 type UpdateFolderRequest struct {
-	ID   uuid.UUID `json:"id" binding:"required"`
-	Name string    `json:"name" binding:"required"`
+	Name string `json:"name" binding:"required"`
 }
 
 type ShareFolderRequest struct {
@@ -23,6 +22,5 @@ type ShareFolderRequest struct {
 type FolderResponse struct {
 	ID     uuid.UUID            `json:"id"`
 	Name   string               `json:"name"`
-	Note   entity.Note          `json:"note,omitempty"`
 	Shared []entity.FolderShare `json:"shared,omitempty"`
 }

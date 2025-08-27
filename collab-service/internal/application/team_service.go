@@ -2,6 +2,8 @@ package application
 
 import (
 	"collab-service/internal/domain/entity"
+	"collab-service/internal/infrastructure/external/event"
+	"collab-service/internal/infrastructure/logger"
 	"collab-service/internal/interface/http/middleware"
 	"fmt"
 
@@ -14,6 +16,7 @@ import (
 type TeamService struct {
 	teamRepository entity.TeamRepository
 	userRepository entity.UserRepository
+	eventProducer  *event.TeamActivityProducer
 }
 
 // NewTeamService creates a new team service instance
@@ -21,6 +24,7 @@ func NewTeamService(repo entity.TeamRepository, userRepo entity.UserRepository) 
 	return &TeamService{
 		teamRepository: repo,
 		userRepository: userRepo,
+		eventProducer:  event.GetTeamActivityProducer(),
 	}
 }
 
@@ -75,7 +79,15 @@ func (s *TeamService) CreateTeam(c *gin.Context, name string, members []uuid.UUI
 	}
 
 	// Save team and rosters
-	return s.teamRepository.Create(c.Request.Context(), team)
+	savedTeam, err := s.teamRepository.Create(c.Request.Context(), team)
+
+	go func() {
+		if err := s.eventProducer.Produce(event.NewTeamEvent(event.TeamCreated, savedTeam.ID.String(), userID.String(), "")); err != nil {
+			logger.Error("failed to produce event: %v", err)
+		}
+	}()
+
+	return savedTeam, err
 }
 
 func (s *TeamService) GetAllTeamsOfUser(c *gin.Context) ([]*entity.Team, error) {
@@ -99,6 +111,7 @@ func (s *TeamService) GetTeamByID(c *gin.Context, id uuid.UUID) (*entity.Team, e
 }
 
 func (s *TeamService) AddMembers(c *gin.Context, teamID uuid.UUID, members []uuid.UUID) (*entity.Team, error) {
+	userID, _ := middleware.GetUserInfoFromGin(c)
 	team, err := s.teamRepository.GetByID(c.Request.Context(), teamID)
 	if err != nil {
 		return nil, err
@@ -126,10 +139,19 @@ func (s *TeamService) AddMembers(c *gin.Context, teamID uuid.UUID, members []uui
 		return nil, err
 	}
 
+	go func() {
+		for _, member := range members {
+			if err := s.eventProducer.Produce(event.NewTeamEvent(event.MemberAdded, team.ID.String(), userID.String(), member.String())); err != nil {
+				logger.Error("failed to produce event: %v", err)
+			}
+		}
+	}()
+
 	team, err = s.teamRepository.GetByID(c.Request.Context(), team.ID)
 	if err != nil {
 		return nil, err
 	}
+
 	return team, nil
 }
 
@@ -140,7 +162,7 @@ func (s *TeamService) AddManager(c *gin.Context, teamID uuid.UUID, managerID uui
 		return nil, err
 	}
 
-	if role != entity.TeamManager {
+	if !role.IsHigherOrEqualTo(entity.TeamManager) {
 		return nil, NewForbiddenError("only team managers can add other managers")
 	}
 
@@ -163,6 +185,12 @@ func (s *TeamService) AddManager(c *gin.Context, teamID uuid.UUID, managerID uui
 	if err := s.teamRepository.AddManager(c.Request.Context(), teamID, managerID); err != nil {
 		return nil, err
 	}
+
+	go func() {
+		if err := s.eventProducer.Produce(event.NewTeamEvent(event.ManagerAdded, teamID.String(), userId.String(), managerID.String())); err != nil {
+			logger.Error("failed to produce event: %v", err)
+		}
+	}()
 
 	team, err = s.teamRepository.GetByID(c.Request.Context(), teamID)
 	if err != nil {
@@ -197,6 +225,15 @@ func (s *TeamService) RemoveMember(c *gin.Context, teamID uuid.UUID, memberID uu
 		return err
 	}
 
+	go func() {
+		if err := s.eventProducer.Produce(
+
+			event.NewTeamEvent(event.MemberRemoved, teamID.String(), userId.String(), memberID.String()),
+		); err != nil {
+			// log lỗi, không ảnh hưởng tới response
+			logger.Error("failed to produce event: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -219,9 +256,29 @@ func (s *TeamService) RemoveManager(c *gin.Context, teamID uuid.UUID, managerID 
 		return NewNotFoundError(fmt.Sprintf("team %s not found", teamID))
 	}
 
+	targetRole, err := s.teamRepository.GetRole(c.Request.Context(), teamID, managerID)
+	switch targetRole {
+	case entity.TeamOwner:
+		return NewForbiddenError("cannot remove team owner")
+	case entity.TeamNone:
+		return NewNotFoundError(fmt.Sprintf("user %s is not a member of team %s", managerID, teamID))
+	}
+
+	if err != nil {
+		return err
+	}
+
 	if err := s.teamRepository.RemoveMember(c.Request.Context(), teamID, managerID); err != nil {
 		return err
 	}
+
+	go func() {
+		if err := s.eventProducer.Produce(
+			event.NewTeamEvent(event.ManagerRemoved, teamID.String(), userId.String(), managerID.String()),
+		); err != nil {
+			logger.Error("failed to produce event: %v", err)
+		}
+	}()
 
 	return nil
 }

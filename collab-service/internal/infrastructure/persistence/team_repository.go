@@ -3,6 +3,7 @@ package persistence
 import (
 	"collab-service/internal/domain/entity"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -148,14 +149,24 @@ func (r *TeamRepositoryImpl) List(ctx context.Context) ([]*entity.Team, error) {
 
 // Get role
 func (r *TeamRepositoryImpl) GetRole(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (entity.TeamAccessRole, error) {
-	var role string
-	if err := r.db.WithContext(ctx).Table("rosters").
+	var roster struct {
+		Role string
+	}
+
+	err := r.db.WithContext(ctx).
+		Table("rosters").
 		Select("role").
 		Where("team_id = ? AND user_id = ?", teamID, userID).
-		Scan(&role).Error; err != nil {
+		First(&roster).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return entity.TeamNone, nil
+		}
 		return "", err
 	}
-	return entity.TeamAccessRole(role), nil
+
+	return entity.TeamAccessRole(roster.Role), nil
 }
 
 // Add implements entity.TeamRepository

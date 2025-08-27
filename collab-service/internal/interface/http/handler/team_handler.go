@@ -106,17 +106,23 @@ func (h *TeamHandler) GetAllByUserID(c *gin.Context) {
 // @Tags teams
 // @Accept json
 // @Produce json
+// @Param teamId path string true "Team ID (UUID)"
 // @Param request body dto.AddMembersRequest true "Add members request"
-// @Router /teams/{teamId}/members [post]
+// @Router /teams/{teamId}/members [put]
 func (h *TeamHandler) AddMembers(c *gin.Context) {
 	var request dto.AddMembersRequest
+	teamId, err := uuid.Parse(c.Param("teamId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		return
+	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	team, err := h.teamService.AddMembers(c, request.TeamID, request.MemberIDs)
+	team, err := h.teamService.AddMembers(c, teamId, request.MemberIDs)
 	if err != nil {
 		application.HandleError(c, err)
 		return
@@ -125,15 +131,29 @@ func (h *TeamHandler) AddMembers(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ToResponse(team))
 }
 
+// @Security BearerAuth
+// @Summary Add a manager to a team
+// @Description Add a new manager to an existing team
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param teamId path string true "Team ID (UUID)"
+// @Param managerId path string true "Manager ID (UUID)"
+// @Router /teams/{teamId}/managers/{managerId} [put]
 func (h *TeamHandler) AddManager(c *gin.Context) {
-	var request dto.AddManagerRequest
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+	teamId, err := uuid.Parse(c.Param("teamId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	team, err := h.teamService.AddManager(c, request.TeamID, request.ManagerID)
+	managerId, err := uuid.Parse(c.Param("managerId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid manager ID"})
+		return
+	}
+
+	team, err := h.teamService.AddManager(c, teamId, managerId)
 	if err != nil {
 		application.HandleError(c, err)
 		return
@@ -150,38 +170,59 @@ func (h *TeamHandler) AddManager(c *gin.Context) {
 // @Tags teams
 // @Accept json
 // @Produce json
-// @Param request body dto.RemoveMemberRequest true "Remove member request"
+// @Param teamId path string true "Team ID (UUID)"
+// @Param memberId path string true "Member ID (UUID)"
 // @Router /teams/{teamId}/members/{memberId} [delete]
 func (h *TeamHandler) RemoveMember(c *gin.Context) {
-	var request dto.RemoveMemberRequest
 
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+	teamId, err := uuid.Parse(c.Param("teamId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	if err := h.teamService.RemoveMember(c, request.TeamID, request.MemberID); err != nil {
+	memberId, err := uuid.Parse(c.Param("memberId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid member ID"})
+		return
+	}
+
+	if err := h.teamService.RemoveMember(c, teamId, memberId); err != nil {
 		application.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, "Success")
 }
 
+// @Security BearerAuth
+// @Summary Remove a manager from a team
+// @Description Remove a manager from an existing team
+// @Tags teams
+// @Accept json
+// @Produce json
+// @Param teamId path string true "Team ID (UUID)"
+// @Param managerId path string true "Manager ID (UUID)"
+// @Router /teams/{teamId}/managers/{managerId} [delete]
 func (h *TeamHandler) RemoveManager(c *gin.Context) {
-	var request dto.RemoveManagerRequest
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+	teamId, err := uuid.Parse(c.Param("teamId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	if err := h.teamService.RemoveManager(c, request.TeamID, request.ManagerID); err != nil {
+	managerId, err := uuid.Parse(c.Param("managerId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid manager ID"})
+		return
+	}
+
+	if err := h.teamService.RemoveManager(c, teamId, managerId); err != nil {
 		application.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, "Success")
 }
 
 // @Security BearerAuth

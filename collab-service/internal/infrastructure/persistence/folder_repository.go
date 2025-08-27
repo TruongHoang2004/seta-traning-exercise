@@ -73,28 +73,78 @@ func NewFolderRepository(db *gorm.DB) entity.FolderRepository {
 }
 
 // Create implements entity.FolderRepository.
-func (f *FolderRepositoryImpl) Create(ctx context.Context, folder *entity.Folder) error {
-	return f.db.WithContext(ctx).Create(FolderModelFromDomain(folder)).Error
+func (f *FolderRepositoryImpl) Create(ctx context.Context, folder *entity.Folder) (*entity.Folder, error) {
+	folderModel := FolderModelFromDomain(folder)
+	if err := f.db.WithContext(ctx).Create(folderModel).Error; err != nil {
+		return &entity.Folder{}, err
+	}
+	return folderModel.ToDomain(), nil
 }
 
-// Delete implements entity.FolderRepository.
-func (f *FolderRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
-	return f.db.WithContext(ctx).Delete(&FolderModel{}, "id = ?", id).Error
+// GetOwner implements entity.FolderRepository.
+func (f *FolderRepositoryImpl) GetOwner(ctx context.Context, folderID uuid.UUID) (uuid.UUID, error) {
+	var ownerID string
+	if err := f.db.WithContext(ctx).Table("folder_shares").Where("folder_id = ? AND access_level = ?", folderID, entity.AccessLevelOwner).Select("user_id").Scan(&ownerID).Error; err != nil {
+		return uuid.Nil, err
+	}
+	return uuid.Parse(ownerID)
+}
+
+func (f *FolderRepositoryImpl) Delete(ctx context.Context, folderID uuid.UUID) error {
+	return f.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. Xóa folder_shares
+		if err := tx.Where("folder_id = ?", folderID).Delete(&FolderShareModel{}).Error; err != nil {
+			return err
+		}
+
+		// 2. Lấy danh sách note_id trong folder
+		var noteIDs []uuid.UUID
+		if err := tx.Model(&NoteModel{}).
+			Where("folder_id = ?", folderID).
+			Pluck("id", &noteIDs).Error; err != nil {
+			return err
+		}
+
+		if len(noteIDs) > 0 {
+			// 3. Xóa note_shares của các note này
+			if err := tx.Where("note_id IN ?", noteIDs).Delete(&NoteShareModel{}).Error; err != nil {
+				return err
+			}
+
+			// 4. Xóa notes
+			if err := tx.Where("id IN ?", noteIDs).Delete(&NoteModel{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// 5. Xóa folder
+		if err := tx.Delete(&FolderModel{}, "id = ?", folderID).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // GetAccessLevel implements entity.FolderRepository.
 func (f *FolderRepositoryImpl) GetAccessLevel(ctx context.Context, folderID uuid.UUID, userID uuid.UUID) (entity.AccessLevel, error) {
-	var accessLevel entity.AccessLevel
-	if err := f.db.WithContext(ctx).Model(&FolderModel{}).Where("id = ? AND user_id = ?", folderID, userID).Select("access_level").Scan(&accessLevel).Error; err != nil {
+	var accessLevelStr string
+	var shareModel FolderShareModel
+
+	if err := f.db.WithContext(ctx).Table("folder_shares").Where("folder_id = ? AND user_id = ?", folderID, userID).First(&shareModel).Error; err != nil {
 		return entity.AccessLevelNone, err
 	}
-	return accessLevel, nil
+
+	accessLevelStr = string(shareModel.AccessLevel)
+
+	return entity.AccessLevel(accessLevelStr), nil
+
 }
 
 // GetAllForCanAccess implements entity.FolderRepository.
 func (f *FolderRepositoryImpl) GetAllForCanAccess(ctx context.Context, userID uuid.UUID) ([]*entity.Folder, error) {
 	var models []FolderModel
-	if err := f.db.WithContext(ctx).Model(&FolderModel{}).Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	if err := f.db.WithContext(ctx).Model(&FolderModel{}).Joins("JOIN folder_shares ON folder_shares.folder_id = folders.id").Where("folder_shares.user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 

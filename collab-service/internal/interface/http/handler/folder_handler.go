@@ -107,16 +107,23 @@ func (h *FolderHandler) GetAllCanAccess(c *gin.Context) {
 // @Tags folders
 // @Accept json
 // @Produce json
+// @Param folderID path string true "Folder ID"
 // @Param request body dto.UpdateFolderRequest true "Folder update request"
-// @Router /folders [put]
+// @Router /folders/{folderID} [put]
 func (h *FolderHandler) Update(c *gin.Context) {
 	var request dto.UpdateFolderRequest
+	folderID, err := uuid.Parse(c.Param("folderID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid folder ID"})
+		return
+	}
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	folder, err := h.folderService.GetFolderByID(c, request.ID)
+	folder, err := h.folderService.GetFolderByID(c, folderID)
 	if err != nil {
 		application.HandleError(c, err)
 		return
@@ -147,7 +154,7 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, "Success")
 }
 
 // @Security BearerAuth
@@ -156,7 +163,7 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 // @Tags folders
 // @Accept json
 // @Produce json
-// @Param id path string true "Folder ID"
+// @Param folderID path string true "Folder ID"
 // @Param request body dto.ShareFolderRequest true "Folder sharing request"
 // @Router /folders/{folderID}/share [post]
 func (h *FolderHandler) ShareFolder(c *gin.Context) {
@@ -185,7 +192,7 @@ func (h *FolderHandler) ShareFolder(c *gin.Context) {
 // @Description Unshare a folder with a user by their ID
 // @Tags folders
 // @Produce json
-// @Param id path string true "Folder ID"
+// @Param folderID path string true "Folder ID"
 // @Param userID path string true "User ID"
 // @Router /folders/{folderID}/share/{userID} [delete]
 func (h *FolderHandler) RevokeAccess(c *gin.Context) {

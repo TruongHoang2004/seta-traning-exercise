@@ -6,11 +6,8 @@ definitions:
         items:
           type: string
         type: array
-      teamId:
-        type: string
     required:
     - memberIds
-    - teamId
     type: object
   dto.CreateFolderRequest:
     properties:
@@ -43,15 +40,12 @@ definitions:
     required:
     - teamName
     type: object
-  dto.RemoveMemberRequest:
+  dto.RosterResponse:
     properties:
-      memberId:
+      role:
+        $ref: '#/definitions/entity.TeamAccessRole'
+      userId:
         type: string
-      teamId:
-        type: string
-    required:
-    - memberId
-    - teamId
     type: object
   dto.ShareFolderRequest:
     properties:
@@ -78,7 +72,7 @@ definitions:
         type: string
       rosters:
         items:
-          $ref: '#/definitions/entity.Roster'
+          $ref: '#/definitions/dto.RosterResponse'
         type: array
       teamName:
         type: string
@@ -87,12 +81,9 @@ definitions:
     type: object
   dto.UpdateFolderRequest:
     properties:
-      id:
-        type: string
       name:
         type: string
     required:
-    - id
     - name
     type: object
   dto.UpdateNoteRequest:
@@ -160,11 +151,13 @@ definitions:
     - OWNER
     - MANAGER
     - MEMBER
+    - NONE
     type: string
     x-enum-varnames:
     - TeamOwner
     - TeamManager
     - TeamMember
+    - TeamNone
 host: localhost:8080
 info:
   contact: {}
@@ -202,25 +195,6 @@ paths:
       summary: Create a new folder
       tags:
       - folders
-    put:
-      consumes:
-      - application/json
-      description: Update a folder with the given ID and new name
-      parameters:
-      - description: Folder update request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateFolderRequest'
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - BearerAuth: []
-      summary: Update a folder
-      tags:
-      - folders
   /folders/{folderID}:
     delete:
       description: Delete a folder by its unique ID
@@ -238,6 +212,30 @@ paths:
       summary: Delete a folder
       tags:
       - folders
+    put:
+      consumes:
+      - application/json
+      description: Update a folder with the given ID and new name
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      - description: Folder update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFolderRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update a folder
+      tags:
+      - folders
   /folders/{folderID}/share:
     post:
       consumes:
@@ -246,7 +244,7 @@ paths:
       parameters:
       - description: Folder ID
         in: path
-        name: id
+        name: folderID
         required: true
         type: string
       - description: Folder sharing request
@@ -269,7 +267,7 @@ paths:
       parameters:
       - description: Folder ID
         in: path
-        name: id
+        name: folderID
         required: true
         type: string
       - description: User ID
@@ -544,12 +542,64 @@ paths:
       summary: Update a team
       tags:
       - teams
+  /teams/{teamId}/managers/{managerId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a manager from an existing team
+      parameters:
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
+        required: true
+        type: string
+      - description: Manager ID (UUID)
+        in: path
+        name: managerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Remove a manager from a team
+      tags:
+      - teams
+    put:
+      consumes:
+      - application/json
+      description: Add a new manager to an existing team
+      parameters:
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
+        required: true
+        type: string
+      - description: Manager ID (UUID)
+        in: path
+        name: managerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Add a manager to a team
+      tags:
+      - teams
   /teams/{teamId}/members:
-    post:
+    put:
       consumes:
       - application/json
       description: Add new members to an existing team
       parameters:
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
+        required: true
+        type: string
       - description: Add members request
         in: body
         name: request
@@ -570,12 +620,16 @@ paths:
       - application/json
       description: Remove a member from an existing team
       parameters:
-      - description: Remove member request
-        in: body
-        name: request
+      - description: Team ID (UUID)
+        in: path
+        name: teamId
         required: true
-        schema:
-          $ref: '#/definitions/dto.RemoveMemberRequest'
+        type: string
+      - description: Member ID (UUID)
+        in: path
+        name: memberId
+        required: true
+        type: string
       produces:
       - application/json
       responses: {}

@@ -15,7 +15,7 @@ func InitNoteModule(r *gin.Engine, db *gorm.DB) {
 	noteService := application.NewNoteService(noteRepo)
 	noteHandler := handler.NewNoteHandler(noteService)
 
-	noteRoutes := r.Group("/notes")
+	noteRoutes := r.Group("/api/notes")
 	noteRoutes.Use(middleware.AuthMiddleware())
 	{
 		noteRoutes.POST("", noteHandler.Create)

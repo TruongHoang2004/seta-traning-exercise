@@ -2,8 +2,8 @@ package main
 
 import (
 	"collab-service/config"
-	"collab-service/internal/infrastructure/cache"
 	"collab-service/internal/infrastructure/database"
+	"collab-service/internal/infrastructure/external/cache"
 	"collab-service/internal/infrastructure/logger"
 	httpHandler "collab-service/internal/interface/http"
 	"context"

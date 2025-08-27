@@ -29,7 +29,8 @@ func NewFolder(name string) *Folder {
 }
 
 type FolderRepository interface {
-	Create(ctx context.Context, folder *Folder) error
+	Create(ctx context.Context, folder *Folder) (*Folder, error)
+	GetOwner(ctx context.Context, folderID uuid.UUID) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Folder, error)
 	GetAllForCanAccess(ctx context.Context, userID uuid.UUID) ([]*Folder, error)
 	GetAccessLevel(ctx context.Context, folderID uuid.UUID, userID uuid.UUID) (AccessLevel, error)

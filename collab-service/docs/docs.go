@@ -32,36 +32,6 @@ const docTemplate = `{
                 "summary": "Get all folders that the user can access",
                 "responses": {}
             },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a folder with the given ID and new name",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Update a folder",
-                "parameters": [
-                    {
-                        "description": "Folder update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateFolderRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            },
             "post": {
                 "security": [
                     {
@@ -94,6 +64,43 @@ const docTemplate = `{
             }
         },
         "/folders/{folderID}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a folder with the given ID and new name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "folders"
+                ],
+                "summary": "Update a folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Folder update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFolderRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
             "delete": {
                 "security": [
                     {
@@ -142,7 +149,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Folder ID",
-                        "name": "id",
+                        "name": "folderID",
                         "in": "path",
                         "required": true
                     },
@@ -178,7 +185,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Folder ID",
-                        "name": "id",
+                        "name": "folderID",
                         "in": "path",
                         "required": true
                     },
@@ -603,8 +610,80 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/teams/{teamId}/managers/{managerId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a new manager to an existing team",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teams"
+                ],
+                "summary": "Add a manager to a team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID (UUID)",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Manager ID (UUID)",
+                        "name": "managerId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a manager from an existing team",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teams"
+                ],
+                "summary": "Remove a manager from a team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID (UUID)",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Manager ID (UUID)",
+                        "name": "managerId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/teams/{teamId}/members": {
-            "post": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -622,6 +701,13 @@ const docTemplate = `{
                 ],
                 "summary": "Add members to a team",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team ID (UUID)",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Add members request",
                         "name": "request",
@@ -655,13 +741,18 @@ const docTemplate = `{
                 "summary": "Remove a member from a team",
                 "parameters": [
                     {
-                        "description": "Remove member request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.RemoveMemberRequest"
-                        }
+                        "type": "string",
+                        "description": "Team ID (UUID)",
+                        "name": "teamId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member ID (UUID)",
+                        "name": "memberId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {}
@@ -733,8 +824,7 @@ const docTemplate = `{
         "dto.AddMembersRequest": {
             "type": "object",
             "required": [
-                "memberIds",
-                "teamId"
+                "memberIds"
             ],
             "properties": {
                 "memberIds": {
@@ -742,9 +832,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                },
-                "teamId": {
-                    "type": "string"
                 }
             }
         },
@@ -796,17 +883,13 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.RemoveMemberRequest": {
+        "dto.RosterResponse": {
             "type": "object",
-            "required": [
-                "memberId",
-                "teamId"
-            ],
             "properties": {
-                "memberId": {
-                    "type": "string"
+                "role": {
+                    "$ref": "#/definitions/entity.TeamAccessRole"
                 },
-                "teamId": {
+                "userId": {
                     "type": "string"
                 }
             }
@@ -849,7 +932,7 @@ const docTemplate = `{
                 "rosters": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/entity.Roster"
+                        "$ref": "#/definitions/dto.RosterResponse"
                     }
                 },
                 "teamName": {
@@ -863,13 +946,9 @@ const docTemplate = `{
         "dto.UpdateFolderRequest": {
             "type": "object",
             "required": [
-                "id",
                 "name"
             ],
             "properties": {
-                "id": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 }
@@ -969,12 +1048,14 @@ const docTemplate = `{
             "enum": [
                 "OWNER",
                 "MANAGER",
-                "MEMBER"
+                "MEMBER",
+                "NONE"
             ],
             "x-enum-varnames": [
                 "TeamOwner",
                 "TeamManager",
-                "TeamMember"
+                "TeamMember",
+                "TeamNone"
             ]
         }
     },

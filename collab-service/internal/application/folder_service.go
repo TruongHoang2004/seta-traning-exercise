@@ -2,29 +2,54 @@ package application
 
 import (
 	"collab-service/internal/domain/entity"
+	"collab-service/internal/infrastructure/external/event"
 	"collab-service/internal/interface/http/middleware"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type FolderService struct {
-	folderRepo entity.FolderRepository
+	folderRepo    entity.FolderRepository
+	eventProducer *event.AssetChangeProducer
 }
 
 func NewFolderService(repo entity.FolderRepository) *FolderService {
 	return &FolderService{
-		folderRepo: repo,
+		folderRepo:    repo,
+		eventProducer: event.GetAssetChangeProducer(),
 	}
 }
 
 func (s *FolderService) Create(c *gin.Context, name string) (*entity.Folder, error) {
 	folder := entity.NewFolder(name)
 
-	if err := s.folderRepo.Create(c.Request.Context(), folder); err != nil {
+	userId, _ := middleware.GetUserInfoFromGin(c)
+	folder.Shared = append(folder.Shared, entity.FolderShare{
+		UserID:      userId,
+		AccessLevel: entity.AccessLevelOwner,
+	})
+
+	createdFolder, err := s.folderRepo.Create(c.Request.Context(), folder)
+	if err != nil {
 		return nil, NewBadRequestError(err.Error())
 	}
-	return folder, nil
+
+	go func() {
+		event := event.NewAssetEvent(
+			event.FolderCreated,
+			event.Folder,
+			createdFolder.ID.String(),
+			userId.String(),
+			userId.String(),
+			time.Now().String(),
+		)
+		if err := s.eventProducer.Produce(event); err != nil {
+			// Handle error
+		}
+	}()
+	return createdFolder, nil
 }
 
 func (s *FolderService) GetFolderByID(c *gin.Context, id uuid.UUID) (*entity.Folder, error) {
@@ -60,7 +85,18 @@ func (s *FolderService) ShareFolder(c *gin.Context, folderID, userID uuid.UUID, 
 		return s.folderRepo.ChangeAccessLevel(c.Request.Context(), folderID, userID, accessLevel)
 	}
 
-	return s.folderRepo.ShareFolder(c.Request.Context(), folderID, userID, accessLevel)
+	err := s.folderRepo.ShareFolder(c.Request.Context(), folderID, userID, accessLevel)
+
+	go s.eventProducer.Produce(event.NewAssetEvent(
+		event.FolderShared,
+		event.Folder,
+		folderID.String(),
+		userID.String(),
+		currentUserID.String(),
+		time.Now().String(),
+	))
+
+	return err
 }
 
 func (s *FolderService) RevokeAccess(c *gin.Context, folderID, userID uuid.UUID) error {
@@ -71,19 +107,84 @@ func (s *FolderService) RevokeAccess(c *gin.Context, folderID, userID uuid.UUID)
 		return NewForbiddenError("You do not have permission to revoke access for this folder")
 	}
 
-	return s.folderRepo.RevokeAccess(c.Request.Context(), folderID, userID)
+	err := s.folderRepo.RevokeAccess(c.Request.Context(), folderID, userID)
+
+	go s.eventProducer.Produce(event.NewAssetEvent(
+		event.FolderUnshared,
+		event.Folder,
+		folderID.String(),
+		currentUserID.String(),
+		userID.String(),
+		time.Now().String(),
+	))
+
+	return err
 }
 
 func (s *FolderService) Update(c *gin.Context, folder *entity.Folder) error {
+
+	userID, _ := middleware.GetUserInfoFromGin(c)
+
+	role, err := s.folderRepo.GetAccessLevel(c.Request.Context(), folder.ID, userID)
+	if err != nil {
+		return NewNotFoundError(err.Error())
+	}
+
+	if !role.GreaterThan(entity.AccessLevelWrite) {
+		return NewForbiddenError("You do not have permission to update this folder")
+	}
+
 	if err := s.folderRepo.Update(c.Request.Context(), folder); err != nil {
 		return NewBadRequestError(err.Error())
 	}
+
+	ownerId, err := s.folderRepo.GetOwner(c.Request.Context(), folder.ID)
+	if err != nil {
+		return NewNotFoundError(err.Error())
+	}
+
+	go s.eventProducer.Produce(event.NewAssetEvent(
+		event.FolderUpdated,
+		event.Folder,
+		folder.ID.String(),
+		ownerId.String(),
+		userID.String(),
+		time.Now().String(),
+	))
+
 	return nil
 }
 
 func (s *FolderService) Delete(c *gin.Context, id uuid.UUID) error {
+
+	userID, _ := middleware.GetUserInfoFromGin(c)
+
+	ownerID, err := s.folderRepo.GetOwner(c.Request.Context(), id)
+	if err != nil {
+		return NewNotFoundError(err.Error())
+	}
+
+	if userID != ownerID {
+		return NewForbiddenError("You do not have permission to delete this folder")
+	}
+
 	if err := s.folderRepo.Delete(c.Request.Context(), id); err != nil {
 		return NewBadRequestError(err.Error())
 	}
+
+	go func() {
+		event := event.NewAssetEvent(
+			event.FolderDeleted,
+			event.Folder,
+			id.String(),
+			ownerID.String(),
+			userID.String(),
+			time.Now().String(),
+		)
+		if err := s.eventProducer.Produce(event); err != nil {
+			// Handle error
+		}
+	}()
+
 	return nil
 }

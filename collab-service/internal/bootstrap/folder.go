@@ -19,9 +19,9 @@ func InitFolderModule(r *gin.Engine, db *gorm.DB) {
 	group.Use(middleware.AuthMiddleware())
 	{
 		group.POST("/", folderHandler.Create)
-		group.GET("/:id", folderHandler.GetByID)
+		group.GET("/:folderID", folderHandler.GetByID)
 		group.GET("/", folderHandler.GetAllCanAccess)
-		group.PUT("/:id", folderHandler.Update)
+		group.PUT("/:folderID", folderHandler.Update)
 		group.DELETE("/:folderID", folderHandler.Delete)
 		group.POST("/:folderID/share", folderHandler.ShareFolder)
 		group.DELETE("/:folderID/share/:userID", folderHandler.RevokeAccess)

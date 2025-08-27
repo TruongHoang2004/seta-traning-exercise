@@ -55,8 +55,10 @@ func (r *ManagerRepositoryImpl) GetAssetsByUserID(ctx context.Context, userID uu
 
 	// Find notes owned by the user
 	ownedNotes := r.db.WithContext(ctx).
-		Table("notes").
-		Where("owner_id = ?", userID)
+		Table("notes n").
+		Select("DISTINCT n.*").
+		Joins("LEFT JOIN note_shares ns ON n.id = ns.note_id").
+		Where("n.owner_id = ?", userID)
 
 	// Find notes directly shared with the user
 	directlyShared := r.db.WithContext(ctx).
