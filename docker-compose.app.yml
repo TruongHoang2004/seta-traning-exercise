@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:16
     container_name: postgres
@@ -32,30 +31,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-
-  redisinsight:
-    image: redis/redisinsight:latest
-    container_name: redisinsight
-    restart: always
-    ports:
-      - "5540:5540"
-    depends_on:
-      - redis
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin 
 
   user-service:
     build:
@@ -113,80 +88,33 @@ services:
     ports:
       - "8080:8080"
 
-  loki:
-    image: grafana/loki:2.9.4
-    container_name: loki
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:2.9.4
-    container_name: promtail
-    volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml
-      - ./user-service/logs:/var/log/user-service
-      - ./collab-service/logs:/var/log/collab-service
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-
-  grafana:
-    image: grafana/grafana:10.3.1
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - loki
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
-    hostname: zookeeper
-    ports:
-      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
+    image: confluentinc/cp-kafka:7.5.0 
     container_name: kafka
     hostname: kafka
     ports:
-      - "9092:9092"
+      - "9092:9092"      # truy cập từ host
+      - "29092:29092"    # truy cập từ host (nếu muốn)
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-    depends_on:
-      - zookeeper
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "9090:9090"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    depends_on:
-      - kafka
-      - zookeeper
-
+      ALLOW_PLAINTEXT_LISTENER: "yes"
 
 volumes:
   pgdata:
   redis_data:
-  pgadmin_data:
-  grafana_data:
-  kafka_data:
