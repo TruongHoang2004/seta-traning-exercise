@@ -13,6 +13,7 @@ type UserModel struct {
 	UserID    uuid.UUID       `json:"userId"`
 	Username  string          `json:"username"`
 	Email     string          `json:"email"`
+	Password  string          `json:"password"`
 	Role      entity.UserType `json:"role"`
 	CreatedAt time.Time       `json:"createdAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
@@ -23,7 +24,7 @@ func (m *UserModel) ToDomain() *entity.User {
 		ID:        m.UserID,
 		Username:  m.Username,
 		Email:     m.Email,
-		Role:      entity.UserType(m.Role),
+		Role:      m.Role,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -34,6 +35,7 @@ func UserModelFromDomain(domainUser *entity.User) *UserModel {
 		UserID:    domainUser.ID,
 		Username:  domainUser.Username,
 		Email:     domainUser.Email,
+		Password:  domainUser.Password,
 		Role:      domainUser.Role,
 		CreatedAt: domainUser.CreatedAt,
 		UpdatedAt: domainUser.UpdatedAt,
@@ -51,11 +53,11 @@ type UserRepositoryImpl struct {
 }
 
 // Create implements entity.UserRepository.
-func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User, password string) (*entity.User, error) {
+func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User) (*entity.User, error) {
 	input := CreateUserInput{
 		Username: user.Username,
 		Email:    user.Email,
-		Password: password,
+		Password: user.Password,
 		Role:     user.Role,
 	}
 
@@ -67,7 +69,7 @@ func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User, pass
 	return createdUser.User.ToDomain(), nil
 }
 
-func (u *UserRepositoryImpl) CreateMany(ctx context.Context, users []*entity.User, password string) ([]*entity.User, []error) {
+func (u *UserRepositoryImpl) CreateMany(ctx context.Context, users []*entity.User) ([]*entity.User, []error) {
 	var wg sync.WaitGroup
 	usersChan := make(chan *entity.User, len(users))
 	errorsChan := make(chan error, len(users))
@@ -76,7 +78,7 @@ func (u *UserRepositoryImpl) CreateMany(ctx context.Context, users []*entity.Use
 		wg.Add(1)
 		go func(user *entity.User) {
 			defer wg.Done()
-			createdUser, err := u.Create(ctx, user, password)
+			createdUser, err := u.Create(ctx, user)
 			if err != nil {
 				errorsChan <- err
 				return

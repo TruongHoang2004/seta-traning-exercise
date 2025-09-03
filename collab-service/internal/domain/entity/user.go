@@ -25,8 +25,8 @@ type User struct {
 }
 
 type UserRepository interface {
-	Create(ctx context.Context, user *User, password string) (*User, error)
-	CreateMany(ctx context.Context, users []*User, password string) ([]*User, []error)
+	Create(ctx context.Context, user *User) (*User, error)
+	CreateMany(ctx context.Context, users []*User) ([]*User, []error)
 	ExistsByID(ctx context.Context, id uuid.UUID) (bool, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	List(ctx context.Context, userType *UserType, userIDs []uuid.UUID) ([]*User, error)

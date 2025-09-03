@@ -31,7 +31,7 @@ func NewUserHandler(userService *application.UserService) *UserHandler {
 // @Router /users/import [post]
 func (h *UserHandler) ImportUsersFromCSV(c *gin.Context) {
 	// Get the uploaded file from form
-	fileHeader, err := c.FormFile("csvfile")
+	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("failed to get CSV file: %v", err)})
 		return
@@ -55,7 +55,6 @@ func (h *UserHandler) ImportUsersFromCSV(c *gin.Context) {
 	}
 
 	var users []*entity.User
-	defaultPassword := "changeme123"
 
 	records, err := csvReader.ReadAll()
 	if err != nil {
@@ -64,7 +63,7 @@ func (h *UserHandler) ImportUsersFromCSV(c *gin.Context) {
 	}
 
 	for i, record := range records {
-		if len(record) < 3 {
+		if len(record) < 4 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("line %d: not enough fields", i+2)})
 			return
 		}
@@ -72,12 +71,13 @@ func (h *UserHandler) ImportUsersFromCSV(c *gin.Context) {
 		user := &entity.User{
 			Username: record[0],
 			Email:    record[1],
-			Role:     entity.UserType(record[2]),
+			Password: record[2],
+			Role:     entity.UserType(record[3]),
 		}
 		users = append(users, user)
 	}
 
-	createdUsers, errs := h.userService.CreateManyUsers(c.Request.Context(), users, defaultPassword)
+	createdUsers, errs := h.userService.CreateManyUsers(c.Request.Context(), users)
 	if len(errs) > 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create users: %v", errs)})
 		return

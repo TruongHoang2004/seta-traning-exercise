@@ -109,6 +109,9 @@ func (c *GraphQLClient) CreateUser(ctx context.Context, input CreateUserInput) (
 		ctx = context.Background()
 	}
 	err := c.client.Run(ctx, req, &resp)
+	if resp.CreateUser.Errors != nil {
+		return nil, fmt.Errorf("failed to create user: %v", resp.CreateUser.Errors)
+	}
 	return &resp.CreateUser, err
 }
 

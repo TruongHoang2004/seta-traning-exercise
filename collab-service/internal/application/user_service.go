@@ -15,6 +15,6 @@ func NewUserService(repo entity.UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) CreateManyUsers(ctx context.Context, users []*entity.User, password string) ([]*entity.User, []error) {
-	return s.repo.CreateMany(ctx, users, password)
+func (s *UserService) CreateManyUsers(ctx context.Context, users []*entity.User) ([]*entity.User, []error) {
+	return s.repo.CreateMany(ctx, users)
 }
