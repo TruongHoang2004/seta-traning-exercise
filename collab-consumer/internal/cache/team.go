@@ -5,20 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-type Cache struct {
+type TeamCache struct {
 	rdb *redis.Client
+	ttl time.Duration
 }
 
-func (c *Cache) CloseRedis() {
-	panic("unimplemented")
+func (c *TeamCache) CloseRedis() {
+	if c.rdb != nil {
+		c.rdb.Close()
+	}
 }
 
-func NewCache(rdb *redis.Client) *Cache {
-	return &Cache{rdb: rdb}
+func NewCache(rdb *redis.Client) *TeamCache {
+	return &TeamCache{rdb: rdb, ttl: time.Hour}
 }
 
 func teamMembersKey(teamID string) string {
@@ -26,19 +30,30 @@ func teamMembersKey(teamID string) string {
 }
 
 // Add member to team cache
-func (c *Cache) AddTeamMember(ctx context.Context, teamID, userID string) error {
+func (c *TeamCache) AddTeamMember(ctx context.Context, teamID, userID string) error {
 	log.Printf("Adding user %s to team %s cache", userID, teamID)
-	return c.rdb.SAdd(ctx, teamMembersKey(teamID), userID).Err()
+	key := teamMembersKey(teamID)
+	if err := c.rdb.SAdd(ctx, key, userID).Err(); err != nil {
+		return err
+	}
+	return c.rdb.Expire(ctx, key, c.ttl).Err()
 }
 
 // Remove member from team cache
-func (c *Cache) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
+func (c *TeamCache) RemoveTeamMember(ctx context.Context, teamID, userID string) error {
 	return c.rdb.SRem(ctx, teamMembersKey(teamID), userID).Err()
 }
 
 // Get all members (cache read)
-func (c *Cache) GetTeamMembers(ctx context.Context, teamID string) ([]string, error) {
-	return c.rdb.SMembers(ctx, teamMembersKey(teamID)).Result()
+func (c *TeamCache) GetTeamMembers(ctx context.Context, teamID string) ([]string, error) {
+	key := teamMembersKey(teamID)
+	members, err := c.rdb.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	// Refresh TTL on read
+	c.rdb.Expire(ctx, key, c.ttl)
+	return members, nil
 }
 
 func folderKey(folderID string) string {
@@ -50,71 +65,53 @@ func noteKey(noteID string) string {
 }
 
 // Set folder metadata
-func (c *Cache) SetFolderMetadata(ctx context.Context, folderID string, data interface{}) error {
+func (c *TeamCache) SetFolderMetadata(ctx context.Context, folderID string, data interface{}) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.rdb.Set(ctx, folderKey(folderID), b, 0).Err()
+	return c.rdb.Set(ctx, folderKey(folderID), b, c.ttl).Err()
 }
 
 // Get folder metadata
-func (c *Cache) GetFolderMetadata(ctx context.Context, folderID string, dest interface{}) error {
-	val, err := c.rdb.Get(ctx, folderKey(folderID)).Bytes()
+func (c *TeamCache) GetFolderMetadata(ctx context.Context, folderID string, dest interface{}) error {
+	key := folderKey(folderID)
+	val, err := c.rdb.Get(ctx, key).Bytes()
 	if err != nil {
 		return err
 	}
+	// Refresh TTL on read
+	c.rdb.Expire(ctx, key, c.ttl)
 	return json.Unmarshal(val, dest)
 }
 
 // Invalidate folder cache
-func (c *Cache) DeleteFolderMetadata(ctx context.Context, folderID string) error {
+func (c *TeamCache) DeleteFolderMetadata(ctx context.Context, folderID string) error {
 	return c.rdb.Del(ctx, folderKey(folderID)).Err()
 }
 
 // Set note metadata
-func (c *Cache) SetNoteMetadata(ctx context.Context, noteID string, data interface{}) error {
+func (c *TeamCache) SetNoteMetadata(ctx context.Context, noteID string, data interface{}) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.rdb.Set(ctx, noteKey(noteID), b, 0).Err()
+	return c.rdb.Set(ctx, noteKey(noteID), b, c.ttl).Err()
 }
 
 // Get note metadata
-func (c *Cache) GetNoteMetadata(ctx context.Context, noteID string, dest interface{}) error {
-	val, err := c.rdb.Get(ctx, noteKey(noteID)).Bytes()
+func (c *TeamCache) GetNoteMetadata(ctx context.Context, noteID string, dest interface{}) error {
+	key := noteKey(noteID)
+	val, err := c.rdb.Get(ctx, key).Bytes()
 	if err != nil {
 		return err
 	}
+	// Refresh TTL on read
+	c.rdb.Expire(ctx, key, c.ttl)
 	return json.Unmarshal(val, dest)
 }
 
 // Invalidate note cache
-func (c *Cache) DeleteNoteMetadata(ctx context.Context, noteID string) error {
+func (c *TeamCache) DeleteNoteMetadata(ctx context.Context, noteID string) error {
 	return c.rdb.Del(ctx, noteKey(noteID)).Err()
-}
-
-func assetACLKey(assetID string) string {
-	return fmt.Sprintf("asset:%s:acl", assetID)
-}
-
-// Grant or update user access
-func (c *Cache) SetUserAccess(ctx context.Context, assetID, userID, accessType string) error {
-	return c.rdb.HSet(ctx, assetACLKey(assetID), userID, accessType).Err()
-}
-
-// Remove user access
-func (c *Cache) RemoveUserAccess(ctx context.Context, assetID, userID string) error {
-	return c.rdb.HDel(ctx, assetACLKey(assetID), userID).Err()
-}
-
-// Get user access
-func (c *Cache) GetUserAccess(ctx context.Context, assetID, userID string) (string, error) {
-	return c.rdb.HGet(ctx, assetACLKey(assetID), userID).Result()
-}
-
-// Get all ACL for an asset
-func (c *Cache) GetAssetACL(ctx context.Context, assetID string) (map[string]string, error) {
-	return c.rdb.HGetAll(ctx, assetACLKey(assetID)).Result()
 }

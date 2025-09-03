@@ -883,17 +883,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.RosterResponse": {
-            "type": "object",
-            "properties": {
-                "role": {
-                    "$ref": "#/definitions/entity.TeamAccessRole"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.ShareFolderRequest": {
             "type": "object",
             "required": [
@@ -929,10 +918,11 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "rosters": {
+                "members": {
+                    "description": "Rosters   []RosterResponse ` + "`" + `json:\"rosters,omitempty\"` + "`" + `",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.RosterResponse"
+                        "type": "string"
                     }
                 },
                 "teamName": {

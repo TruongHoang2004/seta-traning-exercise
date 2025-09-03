@@ -59,7 +59,7 @@ func (r *TeamRepositoryWithCache) cacheTeam(ctx context.Context, team *entity.Te
 
 func (r *TeamRepositoryWithCache) getCachedTeam(ctx context.Context, teamID uuid.UUID) (*entity.Team, error) {
 	userIDs, err := r.rdb.SMembers(ctx, teamCacheKey(teamID)).Result()
-	if err == redis.Nil {
+	if len(userIDs) == 0 {
 		return nil, nil // cache miss
 	}
 	if err != nil {

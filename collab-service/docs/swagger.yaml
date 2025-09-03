@@ -40,13 +40,6 @@ definitions:
     required:
     - teamName
     type: object
-  dto.RosterResponse:
-    properties:
-      role:
-        $ref: '#/definitions/entity.TeamAccessRole'
-      userId:
-        type: string
-    type: object
   dto.ShareFolderRequest:
     properties:
       access_level:
@@ -70,9 +63,10 @@ definitions:
         type: string
       id:
         type: string
-      rosters:
+      members:
+        description: Rosters   []RosterResponse `json:"rosters,omitempty"`
         items:
-          $ref: '#/definitions/dto.RosterResponse'
+          type: string
         type: array
       teamName:
         type: string

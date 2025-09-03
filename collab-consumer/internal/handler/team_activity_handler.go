@@ -8,10 +8,10 @@ import (
 )
 
 type TeamEventHandler struct {
-	Cache *cache.Cache
+	Cache *cache.TeamCache
 }
 
-func NewTeamEventHandler(cache *cache.Cache) *TeamEventHandler {
+func NewTeamEventHandler(cache *cache.TeamCache) *TeamEventHandler {
 	return &TeamEventHandler{Cache: cache}
 }
 
