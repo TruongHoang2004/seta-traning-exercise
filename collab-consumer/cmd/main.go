@@ -7,14 +7,33 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
+
+// getEnv retrieves the environment variable with the given key
+// If the variable is not set, it returns the fallback value
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
 
 func main() {
 	// Initialize Redis
-	cache.InitRedis("localhost:6379", "", 0)
+	redisHost := getEnv("REDIS_HOST", "localhost")
+	redisPort := getEnv("REDIS_PORT", "6379")
+	redisPassword := getEnv("REDIS_PASSWORD", "")
+	redisDB := 0 // Default DB is 0
+
+	redisAddr := redisHost + ":" + redisPort
+	log.Println("Connecting to Redis at", redisAddr)
+	cache.InitRedis(redisAddr, redisPassword, redisDB)
 	defer cache.CloseRedis()
 
 	// Create a cancellable context
@@ -24,12 +43,17 @@ func main() {
 	// Create a WaitGroup to wait for goroutines to finish
 	var wg sync.WaitGroup
 
-	// Kafka configuration
-	brokers := []string{"localhost:9092"}
-	topic1 := "team.activity"
-	groupID1 := "collab-consumer-group"
-	topic2 := "asset.changes"
-	groupID2 := "collab-consumer-group"
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+	}
+
+	// Kafka configuration from environment variables
+	brokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
+	topic1 := getEnv("KAFKA_TOPIC_TEAM", "team.activity")
+	groupID1 := getEnv("KAFKA_GROUP_ID", "collab-consumer-group")
+	topic2 := getEnv("KAFKA_TOPIC_ASSET", "asset.changes")
+	groupID2 := getEnv("KAFKA_GROUP_ID", "collab-consumer-group")
 
 	log.Println("Starting consumers...")
 

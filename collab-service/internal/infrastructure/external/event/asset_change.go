@@ -2,6 +2,7 @@ package event
 
 import (
 	"collab-service/config"
+	"collab-service/internal/domain/entity"
 	"collab-service/internal/infrastructure/external/event/kafka"
 	"context"
 	"encoding/json"
@@ -36,22 +37,24 @@ const (
 )
 
 type AssetEvent struct {
-	EventType EventType `json:"eventType"`
-	AssetType AssetType `json:"assetType"`
-	AssetId   string    `json:"assetId"`
-	OwnerId   string    `json:"ownerId"`
-	ActionBy  string    `json:"actionBy"`
-	Timestamp string    `json:"timestamp"`
+	EventType   EventType          `json:"eventType"`
+	AssetType   AssetType          `json:"assetType"`
+	AssetId     string             `json:"assetId"`
+	OwnerId     string             `json:"ownerId"`
+	ActionBy    string             `json:"actionBy"`
+	AccessLevel entity.AccessLevel `json:"accessLevel"`
+	Timestamp   string             `json:"timestamp"`
 }
 
-func NewAssetEvent(eventType EventType, assetType AssetType, assetId, ownerId, actionBy, timestamp string) *AssetEvent {
+func NewAssetEvent(eventType EventType, assetType AssetType, assetId, ownerId, actionBy, timestamp string, accessLevel entity.AccessLevel) *AssetEvent {
 	return &AssetEvent{
-		EventType: eventType,
-		AssetType: assetType,
-		AssetId:   assetId,
-		OwnerId:   ownerId,
-		ActionBy:  actionBy,
-		Timestamp: timestamp,
+		EventType:   eventType,
+		AssetType:   assetType,
+		AssetId:     assetId,
+		OwnerId:     ownerId,
+		ActionBy:    actionBy,
+		AccessLevel: accessLevel,
+		Timestamp:   timestamp,
 	}
 }
 

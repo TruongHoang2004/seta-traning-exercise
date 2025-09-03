@@ -42,7 +42,7 @@ func (s *NoteService) Create(c *gin.Context, note *entity.Note) (*entity.Note, e
 
 	savedNote, err := s.repo.Create(c.Request.Context(), note, userID)
 
-	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteCreated, event.Note, savedNote.ID.String(), ownerID.String(), userID.String(), time.Now().String()))
+	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteCreated, event.Note, savedNote.ID.String(), ownerID.String(), userID.String(), time.Now().String(), entity.AccessLevelOwner))
 
 	return savedNote, err
 }
@@ -80,7 +80,7 @@ func (s *NoteService) ShareNote(c *gin.Context, noteID, userID uuid.UUID, access
 
 	err := s.repo.ShareNote(c.Request.Context(), noteID, userID, accessLevel)
 
-	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteShared, event.Note, noteID.String(), userID.String(), currentUserID.String(), time.Now().String()))
+	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteShared, event.Note, noteID.String(), userID.String(), currentUserID.String(), time.Now().String(), accessLevel))
 
 	return err
 }
@@ -95,7 +95,7 @@ func (s *NoteService) RevokeAccess(c *gin.Context, noteID, userID uuid.UUID) err
 
 	err := s.repo.RevokeAccess(c.Request.Context(), noteID, userID)
 
-	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteUnshared, event.Note, noteID.String(), userID.String(), currentUserID.String(), time.Now().String()))
+	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteUnshared, event.Note, noteID.String(), userID.String(), currentUserID.String(), time.Now().String(), entity.AccessLevelNone))
 
 	return err
 }
@@ -113,7 +113,7 @@ func (s *NoteService) Update(c *gin.Context, note *entity.Note) error {
 	}
 
 	err := s.repo.Update(c.Request.Context(), note)
-	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteUpdated, event.Note, note.ID.String(), userID.String(), userID.String(), time.Now().String()))
+	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteUpdated, event.Note, note.ID.String(), userID.String(), userID.String(), time.Now().String(), entity.AccessLevelNone))
 	return err
 }
 
@@ -129,7 +129,7 @@ func (s *NoteService) Delete(c *gin.Context, id uuid.UUID) error {
 
 	err := s.repo.Delete(c.Request.Context(), id)
 
-	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteDeleted, event.Note, id.String(), userID.String(), userID.String(), time.Now().String()))
+	go s.eventProducer.Produce(event.NewAssetEvent(event.NoteDeleted, event.Note, id.String(), userID.String(), userID.String(), time.Now().String(), entity.AccessLevelNone))
 
 	return err
 }

@@ -76,6 +76,9 @@ services:
       USER_SERVICE_ENDPOINT: http://user-service:4000/query
       LOG_FILE_PATH: ./logs/server.log
       REDIS_ADDRESS: redis:6379
+      KAFKA_ADDRESS: kafka:29092
+      TEAM_ACTIVITY_TOPIC: team.activity
+      ASSET_CHANGE_TOPIC: asset.changes
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,6 +90,26 @@ services:
       - ./collab-service/logs:/app/logs
     ports:
       - "8080:8080"
+
+  collab-consumer:
+    build:
+      context: ./collab-consumer
+    container_name: collab-consumer
+    environment:
+      KAFKA_BROKERS: kafka:29092,
+      KAFKA_TOPIC_TEAM: team.activity
+      KAFKA_TOPIC_ASSET: asset.changes
+      KAFKA_GROUP_ID: collab-consumer-group
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./collab-consumer/logs:/app/logs
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -114,6 +137,15 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       ALLOW_PLAINTEXT_LISTENER: "yes"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      zookeeper:
+        condition: service_started
 
 volumes:
   pgdata:

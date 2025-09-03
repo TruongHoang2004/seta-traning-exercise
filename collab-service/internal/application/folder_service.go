@@ -44,6 +44,7 @@ func (s *FolderService) Create(c *gin.Context, name string) (*entity.Folder, err
 			userId.String(),
 			userId.String(),
 			time.Now().String(),
+			entity.AccessLevelOwner,
 		)
 		if err := s.eventProducer.Produce(event); err != nil {
 			// Handle error
@@ -94,6 +95,7 @@ func (s *FolderService) ShareFolder(c *gin.Context, folderID, userID uuid.UUID, 
 		userID.String(),
 		currentUserID.String(),
 		time.Now().String(),
+		accessLevel,
 	))
 
 	return err
@@ -116,6 +118,7 @@ func (s *FolderService) RevokeAccess(c *gin.Context, folderID, userID uuid.UUID)
 		currentUserID.String(),
 		userID.String(),
 		time.Now().String(),
+		entity.AccessLevelNone,
 	))
 
 	return err
@@ -150,6 +153,7 @@ func (s *FolderService) Update(c *gin.Context, folder *entity.Folder) error {
 		ownerId.String(),
 		userID.String(),
 		time.Now().String(),
+		entity.AccessLevelNone,
 	))
 
 	return nil
@@ -180,6 +184,7 @@ func (s *FolderService) Delete(c *gin.Context, id uuid.UUID) error {
 			ownerID.String(),
 			userID.String(),
 			time.Now().String(),
+			entity.AccessLevelNone,
 		)
 		if err := s.eventProducer.Produce(event); err != nil {
 			// Handle error
