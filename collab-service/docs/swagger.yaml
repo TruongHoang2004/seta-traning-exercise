@@ -671,6 +671,27 @@ paths:
       summary: Import users from CSV
       tags:
       - users
+  /users/ping:
+    get:
+      description: Check the health of the user service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Ping the user service
+      tags:
+      - users
 schemes:
 - http
 securityDefinitions:

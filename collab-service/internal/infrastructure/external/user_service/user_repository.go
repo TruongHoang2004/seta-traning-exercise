@@ -52,6 +52,10 @@ type UserRepositoryImpl struct {
 	client *GraphQLClient
 }
 
+func (u *UserRepositoryImpl) Ping(ctx context.Context) (string, error) {
+	return u.client.Ping(ctx)
+}
+
 // Create implements entity.UserRepository.
 func (u *UserRepositoryImpl) Create(ctx context.Context, user *entity.User) (*entity.User, error) {
 	input := CreateUserInput{

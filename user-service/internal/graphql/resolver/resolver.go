@@ -1,6 +1,8 @@
 package resolver
 
 import (
+	"user-service/internal/infrastructure/persistence"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -9,5 +11,6 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	Validate *validator.Validate
+	Validate   *validator.Validate
+	Repository *persistence.UserRepository
 }

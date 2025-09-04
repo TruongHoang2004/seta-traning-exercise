@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"user-service/config"
-	"user-service/internal/models"
+	"user-service/internal/infrastructure/persistence"
 	"user-service/pkg/logger"
 
 	"gorm.io/driver/postgres"
@@ -54,7 +54,7 @@ func Connect() {
 	// Auto migrate models
 	log.Println("Running auto migrations...")
 
-	if err := DB.AutoMigrate(&models.User{}); err != nil {
+	if err := DB.AutoMigrate(&persistence.User{}); err != nil {
 		logger.Error("Auto migration for User failed", err)
 	}
 

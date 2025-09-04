@@ -25,6 +25,7 @@ type User struct {
 }
 
 type UserRepository interface {
+	Ping(ctx context.Context) (string, error)
 	Create(ctx context.Context, user *User) (*User, error)
 	CreateMany(ctx context.Context, users []*User) ([]*User, []error)
 	ExistsByID(ctx context.Context, id uuid.UUID) (bool, error)

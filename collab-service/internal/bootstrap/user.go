@@ -20,6 +20,7 @@ func InitUserModule(r *gin.Engine) {
 	h := handler.NewUserHandler(service)
 
 	group := r.Group("/api/users")
+	group.GET("ping", h.Ping)
 	group.Use(middleware.AuthMiddleware())
 	group.Use(middleware.RoleMiddleware(entity.UserTypeManager))
 	{

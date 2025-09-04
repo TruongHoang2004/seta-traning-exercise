@@ -13,6 +13,7 @@ import (
 	"user-service/internal/graphql"
 	"user-service/internal/graphql/generated"
 	"user-service/internal/graphql/resolver"
+	"user-service/internal/infrastructure/persistence"
 	logger "user-service/pkg/logger"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -39,7 +40,7 @@ func main() {
 	port := config.GetConfig().Port
 
 	// Create GraphQL server
-	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{Validate: validator.New()}}))
+	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{Validate: validator.New(), Repository: persistence.NewUserRepository(database.DB)}}))
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})

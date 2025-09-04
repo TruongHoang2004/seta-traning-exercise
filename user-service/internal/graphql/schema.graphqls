@@ -12,6 +12,13 @@ interface MutationResponse {
   errors: [String]
 }
 
+interface QueryRespone {
+  code: String!
+  success: Boolean!
+  message: String!
+  errors: [String]
+}
+
 input UserInput {
   email: String!
   password: String!
@@ -42,6 +49,22 @@ type Manager {
   managerName: String!
 }
 
+type UserQueryResponse implements QueryRespone {
+  code: String!
+  success: Boolean!
+  message: String!
+  errors: [String]
+  user: User
+}
+
+type UsersQueryRespone implements QueryRespone {
+  code: String!
+  success: Boolean!
+  message: String!
+  errors: [String]
+  users: [User]
+}
+
 type UserMutationResponse implements MutationResponse {
   code: String!
   success: Boolean!
@@ -61,9 +84,10 @@ type AuthMutationResponse implements MutationResponse {
 }
 
 type Query {
-  users(role: UserType, userIds: [ID!]): [User!]!
-  user(userId: ID!): User
-  parseToken(accessToken: String!): User
+  users(role: UserType, userIds: [ID!]): UsersQueryRespone
+  user(userId: ID!): UserQueryResponse
+  parseToken(accessToken: String!): UserQueryResponse
+  ping: QueryRespone
 }
 
 type Mutation {

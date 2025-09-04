@@ -16,3 +16,6 @@ var UpdateUser string
 
 //go:embed validate_token.graphql
 var ValidateToken string
+
+//go:embed ping.graphql
+var Ping string

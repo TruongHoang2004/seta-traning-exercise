@@ -6,9 +6,12 @@ import (
 	"collab-service/internal/infrastructure/logger"
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/machinebox/graphql"
+	"github.com/sony/gobreaker"
 )
 
 // Input types
@@ -47,11 +50,24 @@ type AuthMutationResponse struct {
 type GraphQLClient struct {
 	client      *graphql.Client
 	accessToken string
+	breaker     *gobreaker.CircuitBreaker
 }
 
 func NewGraphQLClient(endpoint string) *GraphQLClient {
+	cbSettings := gobreaker.Settings{
+		Name:        "GraphQLClientBreaker",
+		MaxRequests: 3,
+		Interval:    60 * time.Second,
+		Timeout:     30 * time.Second,
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+			return counts.Requests >= 5 && failureRatio >= 0.6
+		},
+	}
+
 	return &GraphQLClient{
-		client: graphql.NewClient(endpoint),
+		client:  graphql.NewClient(endpoint),
+		breaker: gobreaker.NewCircuitBreaker(cbSettings),
 	}
 }
 
@@ -59,12 +75,39 @@ func (c *GraphQLClient) SetAccessToken(token string) {
 	c.accessToken = token
 }
 
+// Kiểm tra breaker có đang mở không
+func (c *GraphQLClient) IsBreakerOpen() bool {
+	return c.breaker.State() == gobreaker.StateOpen
+}
+
 func (c *GraphQLClient) doRequest(req *graphql.Request, respData interface{}) error {
 	if c.accessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.accessToken)
 	}
-	ctx := context.Background()
-	return c.client.Run(ctx, req, respData)
+
+	_, err := c.breaker.Execute(func() (interface{}, error) {
+		runErr := c.client.Run(context.Background(), req, respData)
+		if runErr != nil {
+			return nil, runErr
+		}
+
+		// Nếu response có trường Code thì check
+		if resp, ok := respData.(*struct {
+			Code string `json:"code"`
+		}); ok && resp.Code >= "500" {
+			return nil, fmt.Errorf("server error: code=%s", resp.Code)
+		}
+
+		return respData, nil
+	})
+
+	if err != nil {
+		if c.IsBreakerOpen() {
+			logger.Error("Breaker is OPEN, request blocked", err)
+		}
+		return err
+	}
+	return nil
 }
 
 // Methods
@@ -97,6 +140,47 @@ func (c *GraphQLClient) GetUser(ctx context.Context, userID uuid.UUID) (*entity.
 	}
 	err := c.client.Run(ctx, req, &resp)
 	return resp.User.ToDomain(), err
+}
+
+func (c *GraphQLClient) Ping(ctx context.Context) (string, error) {
+	req := graphql.NewRequest(queries.Ping)
+
+	var resp struct {
+		Ping struct {
+			Code    string   `json:"code"`
+			Success bool     `json:"success"`
+			Message string   `json:"message"`
+			Errors  []string `json:"errors"`
+		} `json:"ping"`
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	_, err := c.breaker.Execute(func() (interface{}, error) {
+		runErr := c.client.Run(ctx, req, &resp)
+		if runErr != nil {
+			return nil, runErr
+		}
+
+		if resp.Ping.Code >= "500" {
+			return nil, fmt.Errorf("server error: %s", resp.Ping.Message)
+		}
+		return resp.Ping.Message, nil
+	})
+
+	if err != nil {
+		if c.IsBreakerOpen() {
+			logger.Error("Breaker is OPEN, Ping request blocked", err)
+		} else {
+			logger.Error(fmt.Sprintf("Ping failed: %v", err))
+		}
+		return "", err
+	}
+
+	log.Println("Ping response from user service:", resp.Ping)
+	return resp.Ping.Message, nil
 }
 
 func (c *GraphQLClient) CreateUser(ctx context.Context, input CreateUserInput) (*UserMutationResponse, error) {

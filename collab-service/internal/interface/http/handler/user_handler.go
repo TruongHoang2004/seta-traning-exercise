@@ -20,6 +20,23 @@ func NewUserHandler(userService *application.UserService) *UserHandler {
 	}
 }
 
+// Ping godoc
+// @Summary Ping the user service
+// @Description Check the health of the user service
+// @Tags users
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /users/ping [get]
+func (h *UserHandler) Ping(c *gin.Context) {
+	message, err := h.userService.Ping(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to ping user service: %v", err)})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": message})
+}
+
 // @Security BearerAuth
 // ImportUsersFromCSV imports multiple users from a CSV file
 // @Summary Import users from CSV

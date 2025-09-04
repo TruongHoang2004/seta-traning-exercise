@@ -17,6 +17,14 @@ type MutationResponse interface {
 	GetErrors() []*string
 }
 
+type QueryRespone interface {
+	IsQueryRespone()
+	GetCode() string
+	GetSuccess() bool
+	GetMessage() string
+	GetErrors() []*string
+}
+
 type AuthMutationResponse struct {
 	Code         string    `json:"code"`
 	Success      bool      `json:"success"`
@@ -43,10 +51,10 @@ func (this AuthMutationResponse) GetErrors() []*string {
 }
 
 type CreateUserInput struct {
-	Username string   `json:"username" validate:"required,min=3,max=50"`
-	Email    string   `json:"email" validate:"required,email"`
-	Password string   `json:"password" validate:"required,min=6"`
-	Role     UserType `json:"role" validate:"required"`
+	Username string   `json:"username"`
+	Email    string   `json:"email"`
+	Password string   `json:"password"`
+	Role     UserType `json:"role"`
 }
 
 type Manager struct {
@@ -91,6 +99,52 @@ func (this UserMutationResponse) GetCode() string     { return this.Code }
 func (this UserMutationResponse) GetSuccess() bool    { return this.Success }
 func (this UserMutationResponse) GetMessage() *string { return this.Message }
 func (this UserMutationResponse) GetErrors() []*string {
+	if this.Errors == nil {
+		return nil
+	}
+	interfaceSlice := make([]*string, 0, len(this.Errors))
+	for _, concrete := range this.Errors {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+type UserQueryResponse struct {
+	Code    string    `json:"code"`
+	Success bool      `json:"success"`
+	Message string    `json:"message"`
+	Errors  []*string `json:"errors,omitempty"`
+	User    *User     `json:"user,omitempty"`
+}
+
+func (UserQueryResponse) IsQueryRespone()         {}
+func (this UserQueryResponse) GetCode() string    { return this.Code }
+func (this UserQueryResponse) GetSuccess() bool   { return this.Success }
+func (this UserQueryResponse) GetMessage() string { return this.Message }
+func (this UserQueryResponse) GetErrors() []*string {
+	if this.Errors == nil {
+		return nil
+	}
+	interfaceSlice := make([]*string, 0, len(this.Errors))
+	for _, concrete := range this.Errors {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+type UsersQueryRespone struct {
+	Code    string    `json:"code"`
+	Success bool      `json:"success"`
+	Message string    `json:"message"`
+	Errors  []*string `json:"errors,omitempty"`
+	Users   []*User   `json:"users,omitempty"`
+}
+
+func (UsersQueryRespone) IsQueryRespone()         {}
+func (this UsersQueryRespone) GetCode() string    { return this.Code }
+func (this UsersQueryRespone) GetSuccess() bool   { return this.Success }
+func (this UsersQueryRespone) GetMessage() string { return this.Message }
+func (this UsersQueryRespone) GetErrors() []*string {
 	if this.Errors == nil {
 		return nil
 	}
