@@ -76,8 +76,8 @@ jobs:
             done
 
       - name: Wait for Kafka
-          run: |
-            until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
+        run: |
+          until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
           echo "Waiting for Kafka..."
           sleep 5
             done
