@@ -13,17 +13,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # 2. Setup Go
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.24"
 
-      # 3. Cache Go modules
       - name: Cache Go modules
         uses: actions/cache@v3
         with:
@@ -34,7 +31,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      # 4. Install dependencies for collab-service
       - name: Install Go dependencies for collab-service
         working-directory: ./collab-service
         run: go mod download
@@ -53,13 +49,11 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      # 5. Build docker images and start services
       - name: Build and start Docker Compose services
         run: |
           docker-compose -f docker-compose.yml build
           docker-compose -f docker-compose.yml up -d
 
-      # 6. Wait for services to be healthy
       - name: Wait for Postgres
         run: |
           until docker exec postgres pg_isready -U postgres; do
@@ -74,23 +68,19 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for Zookeeper
+          run: |
+            until docker exec zookeeper nc -z localhost 2181; do
+          echo "Waiting for Zookeeper..."
+          sleep 2
+            done
+
       - name: Wait for Kafka
-        run: |
-          until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
-            echo "Waiting for Kafka..."
-            sleep 5
-          done
+          run: |
+            until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
+          echo "Waiting for Kafka..."
+          sleep 5
+            done
 
-      # 7. Run Unit Tests
-      # - name: Run Unit Tests
-      #   run: go test -v ./...
-
-      # 8. Run E2E Tests (nếu có)
-      # - name: Run E2E Tests
-      #   run: |
-      #     # ví dụ file test e2e nằm ở e2e/
-      #     go test -v ./e2e/...
-
-      # 9. Shutdown Docker Compose
       - name: Tear down Docker Compose
         run: docker-compose -f docker-compose.yml down -v
