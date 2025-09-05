@@ -84,3 +84,20 @@ jobs:
 
       - name: Tear down Docker Compose
         run: docker-compose -f docker-compose.app.yml down -v
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Tag and Push Docker images
+        run: |
+          docker tag collab-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/collab-service:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/collab-service:latest
+
+          docker tag user-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/user-service:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/user-service:latest
+
+          docker tag collab-consumer:latest ${{ secrets.DOCKER_HUB_USERNAME }}/collab-consumer:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/collab-consumer:latest
