@@ -93,11 +93,11 @@ jobs:
 
       - name: Tag and Push Docker images
         run: |
-          docker tag collab-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/collab-service:latest
+          docker tag seta-training-collab-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-collab-service:latest
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-collab-service:latest
 
-          docker tag user-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/user-service:latest
+          docker tag seta-training-user-service:latest ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-user-service:latest
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-user-service:latest
 
-          docker tag collab-consumer:latest ${{ secrets.DOCKER_HUB_USERNAME }}/collab-consumer:latest
+          docker tag seta-training-collab-consumer:latest ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-collab-consumer:latest
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/seta-training-collab-consumer:latest
