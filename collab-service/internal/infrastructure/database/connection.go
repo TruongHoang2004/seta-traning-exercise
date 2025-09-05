@@ -4,7 +4,7 @@ import (
 	"fmt"
 	//  use zap log for better performance
 	"collab-service/config"
-	"collab-service/internal/infrastructure/persistence"
+	"collab-service/internal/infrastructure/persistence/model"
 
 	"log"
 
@@ -61,7 +61,7 @@ func Connect() {
 		db = db.Debug()
 	}
 
-	db.AutoMigrate(&persistence.TeamModel{}, &persistence.RosterModel{}, &persistence.FolderModel{}, &persistence.NoteModel{}, &persistence.NoteShareModel{}, &persistence.FolderShareModel{})
+	db.AutoMigrate(&model.TeamModel{}, &model.RosterModel{}, &model.FolderModel{}, &model.NoteModel{}, &model.NoteShareModel{}, &model.FolderShareModel{})
 
 	log.Println("Auto migrations completed successfully")
 }

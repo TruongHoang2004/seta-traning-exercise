@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"collab-service/internal/infrastructure/logger"
 	"context"
 	"log"
 	"time"
@@ -21,7 +22,7 @@ func InitRedis(addr, password string, db int) {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		panic("Redis connect error: " + err.Error())
+		logger.Error("Failed to connect to Redis:", err)
 	}
 
 }
@@ -37,4 +38,17 @@ func GetRedisClient() *redis.Client {
 		log.Fatal("Redis client is not initialized. Call InitRedis first.")
 	}
 	return rdb
+}
+
+func CheckRedisConnection() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	err := rdb.Ping(ctx).Err()
+	if err != nil {
+		logger.Error("Redis connection error:", err)
+		return false
+	}
+	logger.Info("Redis connection is healthy")
+	return true
 }

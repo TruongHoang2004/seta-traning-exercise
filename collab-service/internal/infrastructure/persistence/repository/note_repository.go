@@ -1,78 +1,13 @@
-package persistence
+package repository
 
 import (
 	"collab-service/internal/domain/entity"
+	"collab-service/internal/infrastructure/persistence/model"
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
-
-type NoteModel struct {
-	ID uuid.UUID `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-
-	Title string `gorm:"type:varchar(255);not null"`
-	Body  string `gorm:"type:text;not null"`
-
-	FolderID uuid.UUID    `gorm:"type:uuid;not null;index"`
-	Folder   *FolderModel `gorm:"foreignKey:FolderID;references:ID"`
-
-	Shared []NoteShareModel `gorm:"foreignKey:NoteID;references:ID"`
-
-	CreatedAt time.Time `gorm:"autoCreateTime"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-}
-
-func (NoteModel) TableName() string {
-	return "notes"
-}
-
-func (m *NoteModel) ToDomain() *entity.Note {
-	var folder *entity.Folder
-	if m.Folder != nil {
-		folder = m.Folder.ToDomain()
-	}
-
-	shared := make([]*entity.NoteShare, len(m.Shared))
-	for i, share := range m.Shared {
-		shared[i] = share.ToDomain()
-	}
-
-	return &entity.Note{
-		ID:        m.ID,
-		Title:     m.Title,
-		Body:      m.Body,
-		FolderID:  m.FolderID,
-		Folder:    folder,
-		Shared:    shared,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-	}
-}
-
-func NoteModelFromDomain(noteEntity *entity.Note) *NoteModel {
-	var folderModel *FolderModel
-	if noteEntity.Folder != nil {
-		folderModel = FolderModelFromDomain(noteEntity.Folder)
-	}
-
-	var shared []NoteShareModel
-	for _, share := range noteEntity.Shared {
-		shared = append(shared, *NoteShareModelFromDomain(share))
-	}
-	m := &NoteModel{
-		ID:        noteEntity.ID,
-		Title:     noteEntity.Title,
-		Body:      noteEntity.Body,
-		FolderID:  noteEntity.FolderID,
-		Folder:    folderModel,
-		Shared:    shared,
-		CreatedAt: noteEntity.CreatedAt,
-		UpdatedAt: noteEntity.UpdatedAt,
-	}
-	return m
-}
 
 type NoteRepositoryImpl struct {
 	db *gorm.DB
@@ -85,22 +20,21 @@ func NewNoteRepository(db *gorm.DB) entity.NoteRepository {
 }
 
 func (r *NoteRepositoryImpl) Create(ctx context.Context, note *entity.Note, userId uuid.UUID) (*entity.Note, error) {
-	model := NoteModelFromDomain(note)
+	noteModel := model.NoteModelFromDomain(note)
 
 	var result *entity.Note
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Tạo note
-		if err := tx.Create(model).Error; err != nil {
+		if err := tx.Create(noteModel).Error; err != nil {
 			return err
 		}
 
 		// Gán lại ID mới được DB sinh ra vào domain
-		note.ID = model.ID
-
+		note.ID = noteModel.ID
 		// Tạo record share cho owner
-		noteShare := NoteShareModel{
-			NoteID:      model.ID,
+		noteShare := model.NoteShareModel{
+			NoteID:      noteModel.ID,
 			UserID:      userId,
 			AccessLevel: entity.AccessLevelOwner,
 		}
@@ -134,7 +68,7 @@ func (r *NoteRepositoryImpl) GetOwner(ctx context.Context, noteID uuid.UUID) (uu
 }
 
 func (r *NoteRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*entity.Note, error) {
-	var model NoteModel
+	var model model.NoteModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
@@ -143,7 +77,7 @@ func (r *NoteRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*entity
 
 func (r *NoteRepositoryImpl) GetFolderAccessLevel(ctx context.Context, folderID, userID uuid.UUID) (entity.AccessLevel, error) {
 	var accessLevelStr string
-	var shareModel FolderShareModel
+	var shareModel model.FolderShareModel
 
 	if err := r.db.WithContext(ctx).Table("folder_shares").Where("folder_id = ? AND user_id = ?", folderID, userID).First(&shareModel).Error; err != nil {
 		return entity.AccessLevelNone, err
@@ -185,8 +119,8 @@ func (r *NoteRepositoryImpl) GetAccessLevel(ctx context.Context, noteID uuid.UUI
 
 // GetByFolderID implements entity.NoteRepository.
 func (r *NoteRepositoryImpl) GetByFolderID(ctx context.Context, folderID uuid.UUID) ([]*entity.Note, error) {
-	var models []NoteModel
-	if err := r.db.WithContext(ctx).Model(&NoteModel{}).Where("folder_id = ?", folderID).Find(&models).Error; err != nil {
+	var models []model.NoteModel
+	if err := r.db.WithContext(ctx).Model(&model.NoteModel{}).Where("folder_id = ?", folderID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 
@@ -198,8 +132,8 @@ func (r *NoteRepositoryImpl) GetByFolderID(ctx context.Context, folderID uuid.UU
 }
 
 func (r *NoteRepositoryImpl) GetAllCanAccess(ctx context.Context, userID uuid.UUID) ([]*entity.Note, error) {
-	var models []NoteModel
-	if err := r.db.WithContext(ctx).Model(&NoteModel{}).Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	var models []model.NoteModel
+	if err := r.db.WithContext(ctx).Model(&model.NoteModel{}).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
 
@@ -207,7 +141,7 @@ func (r *NoteRepositoryImpl) GetAllCanAccess(ctx context.Context, userID uuid.UU
 	//  1) Share trực tiếp qua note_shares
 	//  2) Nằm trong các folder mà user là owner hoặc được share qua folders_share
 	if err := r.db.WithContext(ctx).
-		Model(&NoteModel{}).
+		Model(&model.NoteModel{}).
 		Joins("LEFT JOIN folders ON notes.folder_id = folders.id").
 		Joins("LEFT JOIN note_shares ON notes.id = note_shares.note_id").
 		Joins("LEFT JOIN folders_share ON folders.id = folders_share.folder_id").
@@ -248,11 +182,11 @@ func (r *NoteRepositoryImpl) ChangeAccessLevel(ctx context.Context, noteID, user
 }
 
 func (r *NoteRepositoryImpl) Update(ctx context.Context, note *entity.Note) error {
-	NoteModelFromDomain(note)
+	noteModel := model.NoteModelFromDomain(note)
 
 	// Luôn bỏ qua folder_id
 	return r.db.WithContext(ctx).
-		Model(&NoteModel{}).
+		Model(&noteModel).
 		Where("id = ?", note.ID).
 		Updates(map[string]interface{}{
 			"title": note.Title,
@@ -265,13 +199,13 @@ func (r *NoteRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 		// Xoá tất cả share liên quan
 		if err := tx.WithContext(ctx).
 			Where("note_id = ?", id).
-			Delete(&NoteShareModel{}).Error; err != nil {
+			Delete(&model.NoteShareModel{}).Error; err != nil {
 			return err
 		}
 
 		// Xoá note
 		if err := tx.WithContext(ctx).
-			Delete(&NoteModel{}, "id = ?", id).Error; err != nil {
+			Delete(&model.NoteModel{}, "id = ?", id).Error; err != nil {
 			return err
 		}
 

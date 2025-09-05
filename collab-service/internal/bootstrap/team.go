@@ -5,7 +5,7 @@ import (
 	"collab-service/internal/application"
 	"collab-service/internal/infrastructure/external/cache"
 	"collab-service/internal/infrastructure/external/user_service"
-	"collab-service/internal/infrastructure/persistence"
+	"collab-service/internal/infrastructure/persistence/repository"
 	"collab-service/internal/interface/http/handler"
 	"collab-service/internal/interface/http/middleware"
 	"time"
@@ -18,7 +18,7 @@ func InitTeamModule(r *gin.Engine, db *gorm.DB) {
 	client := user_service.NewGraphQLClient(config.GetConfig().UserServiceEndpoint)
 
 	// cacheService := cache.NewCacheService(rdb)
-	teamRepo := persistence.NewTeamRepository(db)
+	teamRepo := repository.NewTeamRepository(db)
 	teamRepoWithCache := cache.NewTeamRepositoryWithCache(teamRepo, cache.GetRedisClient(), time.Hour)
 	userRepo := user_service.NewUserRepository(client)
 

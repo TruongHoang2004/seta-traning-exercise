@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"collab-service/internal/application"
-	"collab-service/internal/infrastructure/persistence"
+	"collab-service/internal/infrastructure/persistence/repository"
 	"collab-service/internal/interface/http/handler"
 	"collab-service/internal/interface/http/middleware"
 
@@ -11,7 +11,7 @@ import (
 )
 
 func InitNoteModule(r *gin.Engine, db *gorm.DB) {
-	noteRepo := persistence.NewNoteRepository(db)
+	noteRepo := repository.NewNoteRepository(db)
 	noteService := application.NewNoteService(noteRepo)
 	noteHandler := handler.NewNoteHandler(noteService)
 

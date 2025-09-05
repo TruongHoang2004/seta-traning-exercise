@@ -1,4 +1,4 @@
-package persistence
+package model
 
 import (
 	"collab-service/internal/domain/entity"
