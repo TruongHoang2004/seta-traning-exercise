@@ -14,17 +14,21 @@ import (
 
 var db *gorm.DB
 
-func Connect() {
-	host := config.GetConfig().DBHost
-	user := config.GetConfig().DBUser
-	password := config.GetConfig().DBPassword
-	dbname := config.GetConfig().DBName
-	port := config.GetConfig().DBPort
+func Connect(connectString string) {
 
-	log.Printf("Connecting to database: %s on %s:%s", dbname, host, port)
+	var dsn string
+	if connectString == "" {
+		host := config.GetConfig().DBHost
+		user := config.GetConfig().DBUser
+		password := config.GetConfig().DBPassword
+		dbname := config.GetConfig().DBName
+		port := config.GetConfig().DBPort
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		host, user, password, dbname, port)
+		log.Printf("Connecting to database: %s on %s:%s", dbname, host, port)
+
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+			host, user, password, dbname, port)
+	}
 
 	// Open database connection
 	var dbErr error
@@ -52,7 +56,7 @@ func Connect() {
 	// Note: To close the connection, call sqlDB.Close() when shutting down the application
 	// This should be done in a main shutdown function or defer statement
 
-	log.Printf("Successfully connected to database: %s", dbname)
+	log.Printf("Successfully connected to database: %s", dsn)
 
 	// Auto migrate models
 	log.Println("Running auto migrations...")

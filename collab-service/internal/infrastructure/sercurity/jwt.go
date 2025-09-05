@@ -1,4 +1,4 @@
-package utils
+package sercurity
 
 import (
 	"collab-service/config"

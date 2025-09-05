@@ -1,5 +1,5 @@
 # ===== STAGE 1: BUILD =====
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Cài git nếu go.mod có require từ GitHub
 RUN apk add --no-cache git
@@ -28,7 +28,7 @@ WORKDIR /app
 # Copy binary từ stage build
 COPY --from=builder /app/collab-service .
 
-# Mở port (nếu cần)
+# Mở port (nếu cần)cd 
 EXPOSE 8080
 
 # Chạy app

@@ -44,7 +44,7 @@ func main() {
 	defer logger.Close()
 
 	// Connect DB + Redis
-	database.Connect()
+	database.Connect("")
 	defer database.Close()
 
 	cache.InitRedis(config.GetConfig().RedisAddress, config.GetConfig().RedisPassword, 0)
