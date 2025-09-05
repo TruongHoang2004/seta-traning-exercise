@@ -74,12 +74,19 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for Zookeeper
+          run: |
+            until docker exec zookeeper nc -z localhost 2181; do
+          echo "Waiting for Zookeeper..."
+          sleep 2
+            done
+
       - name: Wait for Kafka
-        run: |
-          until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
-            echo "Waiting for Kafka..."
-            sleep 5
-          done
+          run: |
+            until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list; do
+          echo "Waiting for Kafka..."
+          sleep 5
+            done
 
       # 7. Run Unit Tests
       # - name: Run Unit Tests
