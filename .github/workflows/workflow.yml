@@ -69,8 +69,8 @@ jobs:
           done
 
       - name: Wait for Zookeeper
-          run: |
-            until docker exec zookeeper nc -z localhost 2181; do
+        run: |
+          until docker exec zookeeper nc -z localhost 2181; do
           echo "Waiting for Zookeeper..."
           sleep 2
             done
